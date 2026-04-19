@@ -1,8 +1,15 @@
-// lib/stripe.ts
 import Stripe from "stripe";
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("Falta STRIPE_SECRET_KEY en .env.local");
+export function createStripeClient() {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+
+  if (!secretKey) {
+    throw new Error("Falta STRIPE_SECRET_KEY");
+  }
+
+  return new Stripe(secretKey, {
+    apiVersion: "2025-03-31.basil",
+  });
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+export const stripe = createStripeClient();
