@@ -1,0 +1,31 @@
+{
+  "name": "tadeo-billing-invoices",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@stripe/react-stripe-js": "^6.2.0",
+    "@stripe/stripe-js": "^9.2.0",
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.103.0",
+    "next": "^16.2.3",
+    "pdf-lib": "^1.17.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "stripe": "^18.5.0",
+    "supabase": "^2.89.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/react": "19.2.14",
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.10",
+    "tailwindcss": "^4.2.2",
+    "typescript": "6.0.2"
+  }
+}
