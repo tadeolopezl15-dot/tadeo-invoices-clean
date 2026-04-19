@@ -19,6 +19,15 @@ export default async function NewInvoicePage() {
 
     const supabase = await createServerClient();
 
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      redirect("/login");
+    }
+
     const clientName = String(formData.get("client_name") || "").trim();
     const clientEmail = String(formData.get("client_email") || "").trim();
     const issueDate = String(formData.get("issue_date") || "").trim();
@@ -52,11 +61,11 @@ export default async function NewInvoicePage() {
         };
       })
       .filter(Boolean) as Array<{
-      description: string;
-      quantity: number;
-      unit_price: number;
-      total: number;
-    }>;
+        description: string;
+        quantity: number;
+        unit_price: number;
+        total: number;
+      }>;
 
     if (parsedItems.length === 0) {
       redirect("/invoice/new?error=Agrega%20al%20menos%20un%20concepto%20v%C3%A1lido");
