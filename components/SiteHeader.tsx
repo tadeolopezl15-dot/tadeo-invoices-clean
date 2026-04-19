@@ -1,52 +1,56 @@
 "use client";
 
 import Link from "next/link";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLang } from "@/components/LanguageProvider";
 
 function Flag({ code }: { code: string }) {
-  return <span className="flag-pill">{code}</span>;
+  return (
+    <span className="text-lg">
+      {code === "en" ? "🇺🇸" : "🇪🇸"}
+    </span>
+  );
 }
 
-export function SiteHeader() {
-  const { t } = useLang();
+export default function SiteHeader() {
+  const { lang, setLang } = useLang();
 
   return (
-    <header className="site-header">
-      <div className="container nav-row">
-        <Link href="/" className="logo">
-          <span className="logo-black">invoice</span>
-          <span className="logo-yellow">home</span>
+    <header className="w-full border-b bg-white">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+        
+        {/* Logo */}
+        <Link href="/" className="text-xl font-bold">
+          Tadeo Invoices
         </Link>
 
-        <nav className="nav-actions">
-          <div className="flags">
-            <Flag code="EN" />
-            <Flag code="ES" />
-            <Flag code="FR" />
-            <Flag code="DE" />
-            <Flag code="IT" />
-            <Flag code="PT" />
-          </div>
-
-          <LanguageSwitcher />
-
-          <Link href="/pricing" className="nav-link">
-            Pricing
+        {/* Navigation */}
+        <nav className="flex items-center gap-4">
+          <Link href="/dashboard" className="hover:underline">
+            {lang === "es" ? "Panel" : "Dashboard"}
           </Link>
 
-          <Link href="/dashboard" className="nav-link">
-            {t("dashboard")}
+          <Link href="/invoice" className="hover:underline">
+            {lang === "es" ? "Facturas" : "Invoices"}
           </Link>
 
-          <Link href="/login" className="nav-link">
-            Login
-          </Link>
-
-          <Link href="/invoice/new" className="yellow-btn">
-            {t("newInvoice")}
+          <Link href="/pricing" className="hover:underline">
+            {lang === "es" ? "Precios" : "Pricing"}
           </Link>
         </nav>
+
+        {/* Language + Switch */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setLang(lang === "en" ? "es" : "en")}
+            className="flex items-center gap-1 rounded-lg border px-2 py-1 text-sm"
+          >
+            <Flag code={lang} />
+            {lang.toUpperCase()}
+          </button>
+
+          <LanguageSwitcher />
+        </div>
       </div>
     </header>
   );
