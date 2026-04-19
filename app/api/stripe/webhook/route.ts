@@ -14,7 +14,6 @@ const supabaseAdmin = createClient(
 export async function POST(req: Request) {
   const body = await req.text();
   const signature = req.headers.get("stripe-signature");
-
   const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!signature) {
@@ -48,7 +47,6 @@ export async function POST(req: Request) {
   }
 
   try {
-    // ✅ Pago completado (suscripción creada)
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
 
@@ -74,14 +72,14 @@ export async function POST(req: Request) {
       }
     }
 
-    // ✅ Pago recurrente exitoso
     if (event.type === "invoice.payment_succeeded") {
       const invoice = event.data.object as Stripe.Invoice;
 
+      const rawSubscription = (invoice as unknown as { subscription?: unknown })
+        .subscription;
+
       const subscriptionId =
-        typeof invoice.subscription === "string"
-          ? invoice.subscription
-          : null;
+        typeof rawSubscription === "string" ? rawSubscription : null;
 
       if (subscriptionId) {
         await supabaseAdmin
@@ -94,7 +92,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // ❌ Cancelación de suscripción
     if (event.type === "customer.subscription.deleted") {
       const subscription = event.data.object as Stripe.Subscription;
 
