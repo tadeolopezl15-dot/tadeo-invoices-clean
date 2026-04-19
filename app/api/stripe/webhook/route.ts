@@ -3,7 +3,7 @@ import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-03-31.basil",
+  apiVersion: "2025-08-27.basil",
 });
 
 const supabaseAdmin = createClient(
@@ -48,6 +48,7 @@ export async function POST(req: Request) {
   }
 
   try {
+    // ✅ Pago completado (suscripción creada)
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
 
@@ -73,10 +74,14 @@ export async function POST(req: Request) {
       }
     }
 
+    // ✅ Pago recurrente exitoso
     if (event.type === "invoice.payment_succeeded") {
       const invoice = event.data.object as Stripe.Invoice;
+
       const subscriptionId =
-        typeof invoice.subscription === "string" ? invoice.subscription : null;
+        typeof invoice.subscription === "string"
+          ? invoice.subscription
+          : null;
 
       if (subscriptionId) {
         await supabaseAdmin
@@ -89,6 +94,7 @@ export async function POST(req: Request) {
       }
     }
 
+    // ❌ Cancelación de suscripción
     if (event.type === "customer.subscription.deleted") {
       const subscription = event.data.object as Stripe.Subscription;
 
