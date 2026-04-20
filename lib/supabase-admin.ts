@@ -1,11 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
-import { env } from "./env";
+import { env } from "@/lib/env";
 
 export function createAdminSupabaseClient() {
-  return createClient(env.supabaseUrl, env.supabaseServiceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
+  return createClient(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    }
+  );
 }
