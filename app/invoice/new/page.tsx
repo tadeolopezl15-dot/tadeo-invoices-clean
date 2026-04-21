@@ -61,11 +61,11 @@ export default async function NewInvoicePage() {
         };
       })
       .filter(Boolean) as Array<{
-        description: string;
-        quantity: number;
-        unit_price: number;
-        total: number;
-      }>;
+      description: string;
+      quantity: number;
+      unit_price: number;
+      total: number;
+    }>;
 
     if (parsedItems.length === 0) {
       redirect("/invoice/new?error=Agrega%20al%20menos%20un%20concepto%20v%C3%A1lido");
@@ -74,7 +74,6 @@ export default async function NewInvoicePage() {
     const subtotal = parsedItems.reduce((sum, item) => sum + item.total, 0);
     const tax = 0;
     const total = subtotal + tax;
-
     const invoiceNumber = `INV-${Date.now().toString().slice(-8)}`;
 
     const { data: invoice, error: invoiceError } = await supabase
@@ -115,14 +114,29 @@ export default async function NewInvoicePage() {
 
     if (itemsError) {
       console.error("CREATE_INVOICE_ITEMS_ERROR", itemsError);
-
       await supabase.from("invoices").delete().eq("id", invoice.id);
-
       redirect("/invoice/new?error=No%20se%20pudieron%20guardar%20los%20conceptos");
     }
 
     redirect(`/invoice/${invoice.id}`);
   }
 
-  return <NewInvoiceScreen action={createInvoice} />;
+  return (
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#eff6ff,_#f8fafc_45%,_#ffffff_100%)] px-4 py-8 md:px-6 md:py-10">
+      <div className="mx-auto w-full max-w-6xl">
+        <div className="mb-6 rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6 md:p-8">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">
+            Nueva factura
+          </h1>
+          <p className="mt-2 text-sm text-slate-600 md:text-base">
+            Crea una factura optimizada para móvil y escritorio.
+          </p>
+        </div>
+
+        <div className="rounded-[30px] border border-slate-200 bg-white p-4 shadow-sm sm:p-6 md:p-8">
+          <NewInvoiceScreen action={createInvoice} />
+        </div>
+      </div>
+    </main>
+  );
 }

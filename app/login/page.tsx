@@ -2,62 +2,41 @@ import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import LoginScreen from "@/components/login/LoginScreen";
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ error?: string }>;
-}) {
-  // Obtener parámetros (error en URL)
-  const params = searchParams ? await searchParams : {};
-  const errorMessage = params?.error ? decodeURIComponent(params.error) : "";
-
-  // Cliente Supabase
+export default async function LoginPage() {
   const supabase = await createServerClient();
 
-  // Verificar si ya está logueado
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Si ya está dentro → redirigir
   if (user) {
     redirect("/dashboard");
   }
 
-  // Acción de login (SERVER ACTION)
-  async function login(formData: FormData) {
-    "use server";
-
-    const supabase = await createServerClient();
-
-    const email = String(formData.get("email") || "").trim();
-    const password = String(formData.get("password") || "").trim();
-
-    // Validación básica
-    if (!email || !password) {
-      redirect("/login?error=Completa%20todos%20los%20campos");
-    }
-
-    // Intentar login
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      console.error("LOGIN_ERROR", error);
-      redirect("/login?error=Credenciales%20incorrectas");
-    }
-
-    // Login exitoso
-    redirect("/dashboard");
-  }
-
-  // Render pantalla PRO (client component)
   return (
-    <LoginScreen
-      action={login}
-      errorMessage={errorMessage}
-    />
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#eff6ff,_#f8fafc_45%,_#ffffff_100%)] px-4 py-8 md:px-6 md:py-12">
+      <div className="mx-auto w-full max-w-6xl">
+        <div className="grid items-center gap-8 lg:grid-cols-[1fr_460px] lg:gap-12">
+          <div className="hidden lg:block">
+            <div className="max-w-xl">
+              <p className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">
+                Login seguro
+              </p>
+              <h1 className="mt-5 text-5xl font-bold tracking-tight text-slate-950">
+                Entra a tu panel y administra tu negocio.
+              </h1>
+              <p className="mt-4 text-lg leading-8 text-slate-600">
+                Accede a tus facturas, clientes, configuración y pagos desde una
+                experiencia limpia y profesional.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-[30px] border border-slate-200 bg-white p-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] sm:p-6 md:p-8">
+            <LoginScreen />
+          </div>
+        </div>
+      </div>
+    </main>
   );
 }
