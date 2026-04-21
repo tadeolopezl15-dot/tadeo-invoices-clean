@@ -1,55 +1,61 @@
-import { createServerClient } from "@/lib/supabase/server";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import ForgotPasswordScreen from "@/components/auth/ForgotPasswordScreen";
 
-export default async function ForgotPasswordPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ error?: string; success?: string }>;
-}) {
-  const params = searchParams ? await searchParams : {};
-  const errorMessage = params?.error ? decodeURIComponent(params.error) : "";
-  const successMessage = params?.success
-    ? decodeURIComponent(params.success)
-    : "";
+type Lang = "es" | "en";
 
-  async function sendReset(formData: FormData) {
-    "use server";
+const translations = {
+  es: {
+    badge: "Recuperar acceso",
+    title: "Restablece tu contraseña",
+    subtitle:
+      "Te ayudamos a recuperar el acceso a tu cuenta para que puedas volver a facturar.",
+  },
+  en: {
+    badge: "Recover access",
+    title: "Reset your password",
+    subtitle:
+      "We help you recover access to your account so you can get back to invoicing.",
+  },
+} as const;
 
-    const supabase = await createServerClient();
+export default function ForgotPasswordPage() {
+  const [lang, setLang] = useState<Lang>("es");
 
-    const email = String(formData.get("email") || "").trim();
-
-    if (!email) {
-      const { redirect } = await import("next/navigation");
-      redirect("/forgot-password?error=Completa%20el%20correo%20electr%C3%B3nico");
+  useEffect(() => {
+    const saved = localStorage.getItem("app_lang");
+    if (saved === "es" || saved === "en") {
+      setLang(saved);
+      document.documentElement.lang = saved;
     }
+  }, []);
 
-    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
-    const redirectTo = siteUrl
-      ? `${siteUrl}/update-password`
-      : undefined;
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo,
-    });
-
-    if (error) {
-      console.error("RESET_PASSWORD_ERROR", error);
-      const { redirect } = await import("next/navigation");
-      redirect("/forgot-password?error=No%20se%20pudo%20enviar%20el%20correo%20de%20recuperaci%C3%B3n");
-    }
-
-    const { redirect } = await import("next/navigation");
-    redirect(
-      "/forgot-password?success=Si%20el%20correo%20existe%2C%20te%20enviamos%20un%20enlace%20para%20restablecer%20tu%20contrase%C3%B1a"
-    );
-  }
+  const t = useMemo(() => translations[lang], [lang]);
 
   return (
-    <ForgotPasswordScreen
-      action={sendReset}
-      errorMessage={errorMessage}
-      successMessage={successMessage}
-    />
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#eff6ff,_#f8fafc_45%,_#ffffff_100%)] px-4 py-8 md:px-6 md:py-12">
+      <div className="mx-auto w-full max-w-6xl">
+        <div className="grid items-center gap-8 lg:grid-cols-[1fr_460px] lg:gap-12">
+          <div className="hidden lg:block">
+            <div className="max-w-xl">
+              <p className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">
+                {t.badge}
+              </p>
+              <h1 className="mt-5 text-5xl font-bold tracking-tight text-slate-950">
+                {t.title}
+              </h1>
+              <p className="mt-4 text-lg leading-8 text-slate-600">
+                {t.subtitle}
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-[30px] border border-slate-200 bg-white p-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] sm:p-6 md:p-8">
+            <ForgotPasswordScreen />
+          </div>
+        </div>
+      </div>
+    </main>
   );
 }

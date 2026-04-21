@@ -1,61 +1,61 @@
-import { redirect } from "next/navigation";
-import { createServerClient } from "@/lib/supabase/server";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import UpdatePasswordScreen from "@/components/auth/UpdatePasswordScreen";
 
-export default async function UpdatePasswordPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ error?: string; success?: string }>;
-}) {
-  const params = searchParams ? await searchParams : {};
-  const errorMessage = params?.error ? decodeURIComponent(params.error) : "";
-  const successMessage = params?.success
-    ? decodeURIComponent(params.success)
-    : "";
+type Lang = "es" | "en";
 
-  async function updatePassword(formData: FormData) {
-    "use server";
+const translations = {
+  es: {
+    badge: "Nueva contraseña",
+    title: "Actualiza tu contraseña",
+    subtitle:
+      "Crea una nueva contraseña segura para seguir usando tu cuenta.",
+  },
+  en: {
+    badge: "New password",
+    title: "Update your password",
+    subtitle:
+      "Create a new secure password to continue using your account.",
+  },
+} as const;
 
-    const supabase = await createServerClient();
+export default function UpdatePasswordPage() {
+  const [lang, setLang] = useState<Lang>("es");
 
-    const password = String(formData.get("password") || "").trim();
-    const confirmPassword = String(formData.get("confirm_password") || "").trim();
-
-    if (!password || !confirmPassword) {
-      redirect("/update-password?error=Completa%20todos%20los%20campos");
+  useEffect(() => {
+    const saved = localStorage.getItem("app_lang");
+    if (saved === "es" || saved === "en") {
+      setLang(saved);
+      document.documentElement.lang = saved;
     }
+  }, []);
 
-    if (password.length < 6) {
-      redirect(
-        "/update-password?error=La%20contrase%C3%B1a%20debe%20tener%20al%20menos%206%20caracteres"
-      );
-    }
-
-    if (password !== confirmPassword) {
-      redirect("/update-password?error=Las%20contrase%C3%B1as%20no%20coinciden");
-    }
-
-    const { error } = await supabase.auth.updateUser({
-      password,
-    });
-
-    if (error) {
-      console.error("UPDATE_PASSWORD_ERROR", error);
-      redirect(
-        "/update-password?error=No%20se%20pudo%20actualizar%20la%20contrase%C3%B1a"
-      );
-    }
-
-    redirect(
-      "/login?error=Contrase%C3%B1a%20actualizada%20correctamente.%20Ya%20puedes%20iniciar%20sesi%C3%B3n"
-    );
-  }
+  const t = useMemo(() => translations[lang], [lang]);
 
   return (
-    <UpdatePasswordScreen
-      action={updatePassword}
-      errorMessage={errorMessage}
-      successMessage={successMessage}
-    />
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#eff6ff,_#f8fafc_45%,_#ffffff_100%)] px-4 py-8 md:px-6 md:py-12">
+      <div className="mx-auto w-full max-w-6xl">
+        <div className="grid items-center gap-8 lg:grid-cols-[1fr_460px] lg:gap-12">
+          <div className="hidden lg:block">
+            <div className="max-w-xl">
+              <p className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">
+                {t.badge}
+              </p>
+              <h1 className="mt-5 text-5xl font-bold tracking-tight text-slate-950">
+                {t.title}
+              </h1>
+              <p className="mt-4 text-lg leading-8 text-slate-600">
+                {t.subtitle}
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-[30px] border border-slate-200 bg-white p-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] sm:p-6 md:p-8">
+            <UpdatePasswordScreen />
+          </div>
+        </div>
+      </div>
+    </main>
   );
 }
