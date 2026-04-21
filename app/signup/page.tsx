@@ -1,9 +1,8 @@
-"use client";
-
-import { useEffect, useMemo, useState } from "react";
+import { redirect } from "next/navigation";
+import { createServerClient } from "@/lib/supabase/server";
 import SignupScreen from "@/components/signup/SignupScreen";
 
-type Lang = "es" | "en";
+type SearchParams = Promise<{ lang?: "es" | "en" }>;
 
 const translations = {
   es: {
@@ -20,18 +19,24 @@ const translations = {
   },
 } as const;
 
-export default function SignupPage() {
-  const [lang, setLang] = useState<Lang>("es");
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams?: SearchParams;
+}) {
+  const params = (await searchParams) ?? {};
+  const lang = params.lang === "en" ? "en" : "es";
+  const t = translations[lang];
 
-  useEffect(() => {
-    const saved = localStorage.getItem("app_lang");
-    if (saved === "es" || saved === "en") {
-      setLang(saved);
-      document.documentElement.lang = saved;
-    }
-  }, []);
+  const supabase = await createServerClient();
 
-  const t = useMemo(() => translations[lang], [lang]);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect("/dashboard");
+  }
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#eff6ff,_#f8fafc_45%,_#ffffff_100%)] px-4 py-8 md:px-6 md:py-12">
