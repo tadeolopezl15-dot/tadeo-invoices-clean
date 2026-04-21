@@ -1,72 +1,71 @@
 import { NextResponse } from "next/server";
+import { createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createServerClient();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+
     const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-    const userId = String(formData.get("userId") || "");
+    const file = formData.get("logo");
 
-    if (!file) {
-      return NextResponse.json({ error: "Falta el archivo" }, { status: 400 });
+    if (!(file instanceof File)) {
+      return NextResponse.redirect(new URL("/configuracion?error=no-file", req.url));
     }
 
-    if (!userId) {
-      return NextResponse.json({ error: "Falta userId" }, { status: 400 });
-    }
-
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      return NextResponse.json({ error: "Falta NEXT_PUBLIC_SUPABASE_URL" }, { status: 500 });
-    }
-
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ error: "Falta SUPABASE_SERVICE_ROLE_KEY" }, { status: 500 });
-    }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
 
     const ext = file.name.split(".").pop()?.toLowerCase() || "png";
-    const filePath = `${userId}/logo.${ext}`;
+    const filePath = `${user.id}/logo.${ext}`;
 
-    const arrayBuffer = await file.arrayBuffer();
-    const fileBytes = new Uint8Array(arrayBuffer);
+    const admin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
-    const { error: uploadError } = await supabase.storage
-      .from("company-logos")
-      .upload(filePath, fileBytes, {
-        contentType: file.type || "image/png",
+    const { error: uploadError } = await admin.storage
+      .from("logos")
+      .upload(filePath, buffer, {
+        contentType: file.type,
         upsert: true,
       });
 
     if (uploadError) {
-      return NextResponse.json({ error: uploadError.message }, { status: 500 });
+      console.error("LOGO_UPLOAD_ERROR", uploadError);
+      return NextResponse.redirect(new URL("/configuracion?error=upload", req.url));
     }
 
-    const { data: publicData } = supabase.storage
-      .from("company-logos")
-      .getPublicUrl(filePath);
+    const { data: publicData } = admin.storage.from("logos").getPublicUrl(filePath);
 
     const logoUrl = publicData.publicUrl;
 
-    const { error: settingsError } = await supabase
-      .from("settings")
-      .upsert({
-        user_id: userId,
+    const { error: profileError } = await admin.from("profiles").upsert(
+      {
+        id: user.id,
         logo_url: logoUrl,
-      }, {
-        onConflict: "user_id",
-      });
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
 
-    if (settingsError) {
-      return NextResponse.json({ error: settingsError.message }, { status: 500 });
+    if (profileError) {
+      console.error("PROFILE_LOGO_SAVE_ERROR", profileError);
+      return NextResponse.redirect(new URL("/configuracion?error=profile", req.url));
     }
 
-    return NextResponse.json({ ok: true, logoUrl });
+    return NextResponse.redirect(new URL("/configuracion?success=logo", req.url));
   } catch (error) {
-    console.error("UPLOAD_LOGO_FATAL", error);
-    return NextResponse.json({ error: "Error interno subiendo logo" }, { status: 500 });
+    console.error("UPLOAD_LOGO_ROUTE_ERROR", error);
+    return NextResponse.redirect(new URL("/configuracion?error=unexpected", req.url));
   }
 }
