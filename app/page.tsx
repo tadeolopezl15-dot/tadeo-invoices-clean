@@ -2,78 +2,65 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
 import SiteHeader from "@/components/SiteHeader";
-
-type Lang = "es" | "en";
-
-const translations = {
-  es: {
-    badge: "Facturación profesional con imagen premium",
-    title:
-      "Crea, comparte y cobra facturas con un diseño profesional en móvil y en PC.",
-    subtitle:
-      "Tadeo Invoices te permite generar facturas limpias, administrar clientes, compartir links públicos y cobrar con una experiencia moderna tipo SaaS.",
-    startNow: "Empezar ahora",
-    seePricing: "Ver precios",
-    fastTitle: "+Rápido",
-    fastText: "Crea facturas en minutos desde cualquier dispositivo.",
-    premiumTitle: "+Premium",
-    premiumText:
-      "Diseño limpio, elegante y listo para clientes reales.",
-    flexibleTitle: "+Flexible",
-    flexibleText:
-      "Funciona bien en móvil, tablet, laptop y escritorio.",
-    paymentStatus: "Estado de pago",
-    confirmed: "Confirmado por Stripe",
-    from: "De",
-    billTo: "Para",
-    service: "Servicio",
-    total: "Total",
-    demoService: "Diseño + facturación premium",
-    business: "Tu Empresa LLC",
-    client: "Cliente Demo",
-  },
-  en: {
-    badge: "Professional invoicing with a premium image",
-    title:
-      "Create, share, and collect invoices with a professional design on mobile and desktop.",
-    subtitle:
-      "Tadeo Invoices lets you generate clean invoices, manage clients, share public links, and collect payments with a modern SaaS-style experience.",
-    startNow: "Get started",
-    seePricing: "See pricing",
-    fastTitle: "+Fast",
-    fastText: "Create invoices in minutes from any device.",
-    premiumTitle: "+Premium",
-    premiumText:
-      "Clean, elegant design ready for real clients.",
-    flexibleTitle: "+Flexible",
-    flexibleText:
-      "Works well on mobile, tablet, laptop, and desktop.",
-    paymentStatus: "Payment status",
-    confirmed: "Confirmed by Stripe",
-    from: "From",
-    billTo: "Bill to",
-    service: "Service",
-    total: "Total",
-    demoService: "Design + premium invoicing",
-    business: "Your Business LLC",
-    client: "Demo Client",
-  },
-} as const;
+import { useLang } from "@/components/LanguageProvider";
 
 export default function HomePage() {
-  const [lang, setLang] = useState<Lang>("es");
+  const { lang } = useLang();
 
-  useEffect(() => {
-    const saved = localStorage.getItem("app_lang");
-    if (saved === "es" || saved === "en") {
-      setLang(saved);
-      document.documentElement.lang = saved;
-    }
-  }, []);
-
-  const t = useMemo(() => translations[lang], [lang]);
+  const t =
+    lang === "es"
+      ? {
+          badge: "Facturación profesional con imagen premium",
+          title:
+            "Crea, comparte y cobra facturas con un diseño profesional en móvil y en PC.",
+          subtitle:
+            "Tadeo Invoices te permite generar facturas limpias, administrar clientes, compartir links públicos y cobrar con una experiencia moderna tipo SaaS.",
+          startNow: "Empezar ahora",
+          seePricing: "Ver precios",
+          fastTitle: "+Rápido",
+          fastText: "Crea facturas en minutos desde cualquier dispositivo.",
+          premiumTitle: "+Premium",
+          premiumText:
+            "Diseño limpio, elegante y listo para clientes reales.",
+          flexibleTitle: "+Flexible",
+          flexibleText:
+            "Funciona bien en móvil, tablet, laptop y escritorio.",
+          paymentStatus: "Estado de pago",
+          confirmed: "Confirmado por Stripe",
+          from: "De",
+          billTo: "Para",
+          service: "Servicio",
+          total: "Total",
+          demoService: "Diseño + facturación premium",
+          business: "Tu Empresa LLC",
+          client: "Cliente Demo",
+        }
+      : {
+          badge: "Professional invoicing with a premium image",
+          title:
+            "Create, share, and collect invoices with a professional design on mobile and desktop.",
+          subtitle:
+            "Tadeo Invoices lets you generate clean invoices, manage clients, share public links, and collect payments with a modern SaaS-style experience.",
+          startNow: "Get started",
+          seePricing: "See pricing",
+          fastTitle: "+Fast",
+          fastText: "Create invoices in minutes from any device.",
+          premiumTitle: "+Premium",
+          premiumText: "Clean, elegant design ready for real clients.",
+          flexibleTitle: "+Flexible",
+          flexibleText:
+            "Works well on mobile, tablet, laptop, and desktop.",
+          paymentStatus: "Payment status",
+          confirmed: "Confirmed by Stripe",
+          from: "From",
+          billTo: "Bill to",
+          service: "Service",
+          total: "Total",
+          demoService: "Design + premium invoicing",
+          business: "Your Business LLC",
+          client: "Demo Client",
+        };
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#eff6ff,_#f8fafc_45%,_#ffffff_100%)] text-slate-900">

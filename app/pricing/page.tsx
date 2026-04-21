@@ -1,166 +1,154 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useLang } from "@/components/LanguageProvider";
 
-type Lang = "es" | "en";
 type PlanKey = "starter" | "pro" | "business";
 
-const translations = {
-  es: {
-    badge: "Membresías",
-    title: "Planes para crecer con una imagen profesional",
-    subtitle:
-      "Elige el plan ideal para tu negocio. Cobra membresías en tu cuenta de Stripe y administra facturas, clientes y pagos desde una sola plataforma.",
-    monthly: "mensual",
-    currentLanguage: "ES",
-    switchLanguage: "EN",
-    backHome: "Inicio",
-    login: "Login",
-    signup: "Empezar",
-    mostPopular: "Más popular",
-    choosePlan: "Elegir plan",
-    processing: "Procesando...",
-    includes: "Incluye",
-    secureStripe: "Pago seguro con Stripe",
-    faqTitle: "Preguntas frecuentes",
-    faq1q: "¿El pago de las membresías entra a mi cuenta?",
-    faq1a:
-      "Sí. Si configuraste tus claves de Stripe en Vercel, las suscripciones se crean en tu propia cuenta.",
-    faq2q: "¿Puedo cambiar de plan después?",
-    faq2a:
-      "Sí. Puedes actualizar o cancelar tu membresía más adelante desde tu panel.",
-    faq3q: "¿Funciona en móvil y en computadora?",
-    faq3a:
-      "Sí. La plataforma está ajustada para usarse bien en ambos.",
-    errorDefault: "No se pudo iniciar el checkout.",
-    plans: {
-      starter: {
-        name: "Starter",
-        price: "$12",
-        description: "Ideal para comenzar con facturación profesional.",
-        features: [
-          "Facturas ilimitadas",
-          "Página pública de factura",
-          "Clientes básicos",
-          "Diseño responsive",
-          "Soporte por email",
-        ],
-      },
-      pro: {
-        name: "Pro",
-        price: "$29",
-        description: "Para negocios que quieren verse premium y cobrar mejor.",
-        features: [
-          "Todo en Starter",
-          "Subida de logo",
-          "Gestión avanzada de clientes",
-          "Pagos con Stripe",
-          "Mejor experiencia visual",
-        ],
-      },
-      business: {
-        name: "Business",
-        price: "$59",
-        description: "Pensado para operaciones más completas y crecimiento.",
-        features: [
-          "Todo en Pro",
-          "Funciones avanzadas",
-          "Mayor personalización",
-          "Prioridad en soporte",
-          "Preparado para escalar",
-        ],
-      },
-    },
-  },
-  en: {
-    badge: "Memberships",
-    title: "Plans to grow with a professional image",
-    subtitle:
-      "Choose the right plan for your business. Charge memberships to your Stripe account and manage invoices, clients, and payments from one platform.",
-    monthly: "monthly",
-    currentLanguage: "EN",
-    switchLanguage: "ES",
-    backHome: "Home",
-    login: "Login",
-    signup: "Get started",
-    mostPopular: "Most popular",
-    choosePlan: "Choose plan",
-    processing: "Processing...",
-    includes: "Includes",
-    secureStripe: "Secure payment with Stripe",
-    faqTitle: "Frequently asked questions",
-    faq1q: "Do membership payments go to my account?",
-    faq1a:
-      "Yes. If your Stripe keys are configured in Vercel, subscriptions are created in your own account.",
-    faq2q: "Can I change plans later?",
-    faq2a:
-      "Yes. You can upgrade or cancel your membership later from your dashboard.",
-    faq3q: "Does it work on mobile and desktop?",
-    faq3a:
-      "Yes. The platform is adjusted to work well on both.",
-    errorDefault: "Could not start checkout.",
-    plans: {
-      starter: {
-        name: "Starter",
-        price: "$12",
-        description: "Perfect to start with professional invoicing.",
-        features: [
-          "Unlimited invoices",
-          "Public invoice page",
-          "Basic clients",
-          "Responsive design",
-          "Email support",
-        ],
-      },
-      pro: {
-        name: "Pro",
-        price: "$29",
-        description: "For businesses that want a premium image and better payments.",
-        features: [
-          "Everything in Starter",
-          "Logo upload",
-          "Advanced client management",
-          "Stripe payments",
-          "Better visual experience",
-        ],
-      },
-      business: {
-        name: "Business",
-        price: "$59",
-        description: "Built for more complete operations and growth.",
-        features: [
-          "Everything in Pro",
-          "Advanced features",
-          "More customization",
-          "Priority support",
-          "Ready to scale",
-        ],
-      },
-    },
-  },
-} as const;
-
 export default function PricingPage() {
-  const [lang, setLang] = useState<Lang>("es");
+  const { lang } = useLang();
   const [loadingPlan, setLoadingPlan] = useState<PlanKey | null>(null);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const saved = localStorage.getItem("app_lang");
-    if (saved === "es" || saved === "en") {
-      setLang(saved);
-      document.documentElement.lang = saved;
-    }
-  }, []);
-
-  function changeLang(next: Lang) {
-    setLang(next);
-    localStorage.setItem("app_lang", next);
-    document.documentElement.lang = next;
-  }
-
-  const t = useMemo(() => translations[lang], [lang]);
+  const t = useMemo(
+    () =>
+      lang === "es"
+        ? {
+            badge: "Membresías",
+            title: "Planes para crecer con una imagen profesional",
+            subtitle:
+              "Elige el plan ideal para tu negocio. Cobra membresías en tu cuenta de Stripe y administra facturas, clientes y pagos desde una sola plataforma.",
+            monthly: "mensual",
+            backHome: "Inicio",
+            login: "Login",
+            signup: "Empezar",
+            mostPopular: "Más popular",
+            choosePlan: "Elegir plan",
+            processing: "Procesando...",
+            includes: "Incluye",
+            secureStripe: "Pago seguro con Stripe",
+            faqTitle: "Preguntas frecuentes",
+            faq1q: "¿El pago de las membresías entra a mi cuenta?",
+            faq1a:
+              "Sí. Si configuraste tus claves de Stripe en Vercel, las suscripciones se crean en tu propia cuenta.",
+            faq2q: "¿Puedo cambiar de plan después?",
+            faq2a:
+              "Sí. Puedes actualizar o cancelar tu membresía más adelante desde tu panel.",
+            faq3q: "¿Funciona en móvil y en computadora?",
+            faq3a:
+              "Sí. La plataforma está ajustada para usarse bien en ambos.",
+            errorDefault: "No se pudo iniciar el checkout.",
+            plans: {
+              starter: {
+                name: "Starter",
+                price: "$12",
+                description:
+                  "Ideal para comenzar con facturación profesional.",
+                features: [
+                  "Facturas ilimitadas",
+                  "Página pública de factura",
+                  "Clientes básicos",
+                  "Diseño responsive",
+                  "Soporte por email",
+                ],
+              },
+              pro: {
+                name: "Pro",
+                price: "$29",
+                description:
+                  "Para negocios que quieren verse premium y cobrar mejor.",
+                features: [
+                  "Todo en Starter",
+                  "Subida de logo",
+                  "Gestión avanzada de clientes",
+                  "Pagos con Stripe",
+                  "Mejor experiencia visual",
+                ],
+              },
+              business: {
+                name: "Business",
+                price: "$59",
+                description:
+                  "Pensado para operaciones más completas y crecimiento.",
+                features: [
+                  "Todo en Pro",
+                  "Funciones avanzadas",
+                  "Mayor personalización",
+                  "Prioridad en soporte",
+                  "Preparado para escalar",
+                ],
+              },
+            },
+          }
+        : {
+            badge: "Memberships",
+            title: "Plans to grow with a professional image",
+            subtitle:
+              "Choose the right plan for your business. Charge memberships to your Stripe account and manage invoices, clients, and payments from one platform.",
+            monthly: "monthly",
+            backHome: "Home",
+            login: "Login",
+            signup: "Get started",
+            mostPopular: "Most popular",
+            choosePlan: "Choose plan",
+            processing: "Processing...",
+            includes: "Includes",
+            secureStripe: "Secure payment with Stripe",
+            faqTitle: "Frequently asked questions",
+            faq1q: "Do membership payments go to my account?",
+            faq1a:
+              "Yes. If your Stripe keys are configured in Vercel, subscriptions are created in your own account.",
+            faq2q: "Can I change plans later?",
+            faq2a:
+              "Yes. You can upgrade or cancel your membership later from your dashboard.",
+            faq3q: "Does it work on mobile and desktop?",
+            faq3a:
+              "Yes. The platform is adjusted to work well on both.",
+            errorDefault: "Could not start checkout.",
+            plans: {
+              starter: {
+                name: "Starter",
+                price: "$12",
+                description: "Perfect to start with professional invoicing.",
+                features: [
+                  "Unlimited invoices",
+                  "Public invoice page",
+                  "Basic clients",
+                  "Responsive design",
+                  "Email support",
+                ],
+              },
+              pro: {
+                name: "Pro",
+                price: "$29",
+                description:
+                  "For businesses that want a premium image and better payments.",
+                features: [
+                  "Everything in Starter",
+                  "Logo upload",
+                  "Advanced client management",
+                  "Stripe payments",
+                  "Better visual experience",
+                ],
+              },
+              business: {
+                name: "Business",
+                price: "$59",
+                description:
+                  "Built for more complete operations and growth.",
+                features: [
+                  "Everything in Pro",
+                  "Advanced features",
+                  "More customization",
+                  "Priority support",
+                  "Ready to scale",
+                ],
+              },
+            },
+          },
+    [lang]
+  );
 
   async function goToCheckout(plan: PlanKey) {
     try {
@@ -191,10 +179,7 @@ export default function PricingPage() {
     }
   }
 
-  const cards: Array<{
-    key: PlanKey;
-    featured?: boolean;
-  }> = [
+  const cards: Array<{ key: PlanKey; featured?: boolean }> = [
     { key: "starter" },
     { key: "pro", featured: true },
     { key: "business" },
@@ -224,14 +209,6 @@ export default function PricingPage() {
               {t.signup}
             </Link>
           </div>
-
-          <button
-            type="button"
-            onClick={() => changeLang(lang === "es" ? "en" : "es")}
-            className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            {t.switchLanguage}
-          </button>
         </div>
 
         <div className="mx-auto mt-10 max-w-4xl text-center">
