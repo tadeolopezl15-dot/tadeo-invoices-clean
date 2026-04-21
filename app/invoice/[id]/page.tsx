@@ -29,6 +29,14 @@ type InvoiceItemRow = {
   total: number | null;
 };
 
+type ProfileRow = {
+  company_name: string | null;
+  company_email: string | null;
+  company_phone: string | null;
+  company_address: string | null;
+  logo_url: string | null;
+};
+
 const translations = {
   es: {
     back: "Volver",
@@ -49,10 +57,6 @@ const translations = {
     subtotal: "Subtotal",
     tax: "Impuestos",
     notes: "Notas",
-    paid: "Pagada",
-    pending: "Pendiente",
-    canceled: "Cancelada",
-    noItems: "No hay conceptos en esta factura.",
   },
   en: {
     back: "Back",
@@ -73,10 +77,6 @@ const translations = {
     subtotal: "Subtotal",
     tax: "Tax",
     notes: "Notes",
-    paid: "Paid",
-    pending: "Pending",
-    canceled: "Canceled",
-    noItems: "There are no items in this invoice.",
   },
 } as const;
 
@@ -142,6 +142,12 @@ export default async function InvoiceDetailPage({
 
   const items = (itemsData || []) as InvoiceItemRow[];
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("company_name, company_email, company_phone, company_address, logo_url")
+    .eq("id", user.id)
+    .single<ProfileRow>();
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#eff6ff,_#f8fafc_45%,_#ffffff_100%)] px-4 py-8 md:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-6xl">
@@ -161,6 +167,13 @@ export default async function InvoiceDetailPage({
               {t.edit}
             </Link>
 
+            <Link
+              href={`/api/invoices/${invoice.id}/pdf`}
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700"
+            >
+              PDF
+            </Link>
+
             {invoice.public_token ? (
               <Link
                 href={`/public-invoice/${invoice.public_token}`}
@@ -174,11 +187,22 @@ export default async function InvoiceDetailPage({
 
         <div className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6 md:p-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-500">{t.invoiceNumber}</p>
-              <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">
-                {invoice.invoice_number || "—"}
-              </h1>
+            <div className="flex items-start gap-4">
+              {profile?.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profile.logo_url}
+                  alt="Logo"
+                  className="max-h-[90px] w-auto object-contain"
+                />
+              ) : null}
+
+              <div>
+                <p className="text-sm font-medium text-slate-500">{t.invoiceNumber}</p>
+                <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">
+                  {invoice.invoice_number || "—"}
+                </h1>
+              </div>
             </div>
 
             <div>
@@ -198,8 +222,18 @@ export default async function InvoiceDetailPage({
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                 {t.from}
               </p>
-              <p className="mt-3 text-lg font-bold text-slate-950">Tadeo Invoices</p>
-              <p className="mt-2 text-sm text-slate-500">billing@tadeoinvoices.com</p>
+              <p className="mt-3 text-lg font-bold text-slate-950">
+                {profile?.company_name || "Tadeo Invoices"}
+              </p>
+              <p className="mt-2 text-sm text-slate-500">
+                {profile?.company_email || "billing@tadeoinvoices.com"}
+              </p>
+              {profile?.company_phone ? (
+                <p className="mt-1 text-sm text-slate-500">{profile.company_phone}</p>
+              ) : null}
+              {profile?.company_address ? (
+                <p className="mt-1 text-sm text-slate-500">{profile.company_address}</p>
+              ) : null}
             </div>
 
             <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
@@ -241,7 +275,11 @@ export default async function InvoiceDetailPage({
             </div>
 
             {items.length === 0 ? (
-              <div className="px-5 py-8 text-sm text-slate-500">{t.noItems}</div>
+              <div className="px-5 py-8 text-sm text-slate-500">
+                {lang === "es"
+                  ? "No hay conceptos en esta factura."
+                  : "There are no items in this invoice."}
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-[760px] w-full text-left">
