@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
-
-type SearchParams = Promise<{ lang?: "es" | "en" }>;
+import { getServerLang } from "@/lib/server-lang";
 
 type InvoiceRow = {
   id: string;
@@ -86,10 +85,7 @@ function money(value: number) {
   }).format(value || 0);
 }
 
-function translateStatus(
-  status: string | null,
-  lang: "es" | "en"
-): string {
+function translateStatus(status: string | null, lang: "es" | "en") {
   const value = (status || "").toLowerCase();
   if (value === "paid") return lang === "es" ? "Pagada" : "Paid";
   if (value === "canceled") return lang === "es" ? "Cancelada" : "Canceled";
@@ -99,24 +95,13 @@ function translateStatus(
 function statusClasses(status: string | null) {
   const value = (status || "").toLowerCase();
 
-  if (value === "paid") {
-    return "bg-emerald-50 text-emerald-700 border-emerald-200";
-  }
-
-  if (value === "canceled") {
-    return "bg-rose-50 text-rose-700 border-rose-200";
-  }
-
+  if (value === "paid") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (value === "canceled") return "bg-rose-50 text-rose-700 border-rose-200";
   return "bg-amber-50 text-amber-700 border-amber-200";
 }
 
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams?: SearchParams;
-}) {
-  const params = (await searchParams) ?? {};
-  const lang = params.lang === "en" ? "en" : "es";
+export default async function DashboardPage() {
+  const lang = await getServerLang();
   const t = translations[lang];
 
   const supabase = await createServerClient();
@@ -234,40 +219,17 @@ export default async function DashboardPage({
             </p>
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <Link
-                href="/invoice"
-                className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 transition hover:bg-white hover:shadow-sm"
-              >
-                <p className="text-lg font-semibold text-slate-950">
-                  {t.invoices}
-                </p>
+              <Link href="/invoice" className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 transition hover:bg-white hover:shadow-sm">
+                <p className="text-lg font-semibold text-slate-950">{t.invoices}</p>
               </Link>
-
-              <Link
-                href="/reportes"
-                className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 transition hover:bg-white hover:shadow-sm"
-              >
-                <p className="text-lg font-semibold text-slate-950">
-                  {t.reports}
-                </p>
+              <Link href="/reportes" className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 transition hover:bg-white hover:shadow-sm">
+                <p className="text-lg font-semibold text-slate-950">{t.reports}</p>
               </Link>
-
-              <Link
-                href="/pricing"
-                className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 transition hover:bg-white hover:shadow-sm"
-              >
-                <p className="text-lg font-semibold text-slate-950">
-                  {t.memberships}
-                </p>
+              <Link href="/pricing" className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 transition hover:bg-white hover:shadow-sm">
+                <p className="text-lg font-semibold text-slate-950">{t.memberships}</p>
               </Link>
-
-              <Link
-                href="/configuracion"
-                className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 transition hover:bg-white hover:shadow-sm"
-              >
-                <p className="text-lg font-semibold text-slate-950">
-                  {t.settings}
-                </p>
+              <Link href="/configuracion" className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 transition hover:bg-white hover:shadow-sm">
+                <p className="text-lg font-semibold text-slate-950">{t.settings}</p>
               </Link>
             </div>
           </div>
@@ -275,18 +237,11 @@ export default async function DashboardPage({
           <div className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6 md:p-8">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-slate-950">
-                  {t.recentInvoices}
-                </h2>
-                <p className="mt-2 text-sm leading-7 text-slate-600">
-                  {t.recentInvoicesText}
-                </p>
+                <h2 className="text-2xl font-bold text-slate-950">{t.recentInvoices}</h2>
+                <p className="mt-2 text-sm leading-7 text-slate-600">{t.recentInvoicesText}</p>
               </div>
 
-              <Link
-                href="/invoice"
-                className="text-sm font-semibold text-blue-700 transition hover:text-blue-800"
-              >
+              <Link href="/invoice" className="text-sm font-semibold text-blue-700 transition hover:text-blue-800">
                 {t.viewAll}
               </Link>
             </div>
@@ -294,20 +249,14 @@ export default async function DashboardPage({
             {recentInvoices.length === 0 ? (
               <div className="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-6 text-center">
                 <p className="text-sm text-slate-600">{t.noInvoices}</p>
-                <Link
-                  href="/invoice/new"
-                  className="mt-4 inline-flex rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white"
-                >
+                <Link href="/invoice/new" className="mt-4 inline-flex rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white">
                   {t.createFirstInvoice}
                 </Link>
               </div>
             ) : (
               <div className="mt-6 space-y-4">
                 {recentInvoices.map((invoice) => (
-                  <div
-                    key={invoice.id}
-                    className="rounded-[24px] border border-slate-200 bg-slate-50 p-4"
-                  >
+                  <div key={invoice.id} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="font-semibold text-slate-950">
@@ -346,17 +295,10 @@ export default async function DashboardPage({
           </p>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/invoice/new"
-              className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-            >
+            <Link href="/invoice/new" className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700">
               {t.createInvoice}
             </Link>
-
-            <Link
-              href="/clientes"
-              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-            >
+            <Link href="/clientes" className="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
               {t.viewClients}
             </Link>
           </div>
