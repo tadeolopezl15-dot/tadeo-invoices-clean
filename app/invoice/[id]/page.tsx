@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
+import { getServerLang } from "@/lib/server-lang";
 
 type Params = Promise<{ id: string }>;
-type SearchParams = Promise<{ lang?: "es" | "en" }>;
 
 type InvoiceRow = {
   id: string;
@@ -34,7 +34,6 @@ const translations = {
     back: "Volver",
     edit: "Editar",
     publicView: "Vista pública",
-    title: "Detalle de factura",
     invoiceNumber: "Factura",
     status: "Estado",
     from: "De",
@@ -59,7 +58,6 @@ const translations = {
     back: "Back",
     edit: "Edit",
     publicView: "Public view",
-    title: "Invoice detail",
     invoiceNumber: "Invoice",
     status: "Status",
     from: "From",
@@ -105,14 +103,11 @@ function statusClasses(status: string | null) {
 
 export default async function InvoiceDetailPage({
   params,
-  searchParams,
 }: {
   params: Params;
-  searchParams?: SearchParams;
 }) {
   const { id } = await params;
-  const sp = (await searchParams) ?? {};
-  const lang = sp.lang === "en" ? "en" : "es";
+  const lang = await getServerLang();
   const t = translations[lang];
 
   const supabase = await createServerClient();
@@ -152,7 +147,7 @@ export default async function InvoiceDetailPage({
       <div className="mx-auto w-full max-w-6xl">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Link
-            href={`/invoice?lang=${lang}`}
+            href="/invoice"
             className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700"
           >
             {t.back}
@@ -160,7 +155,7 @@ export default async function InvoiceDetailPage({
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link
-              href={`/invoice/${invoice.id}/edit?lang=${lang}`}
+              href={`/invoice/${invoice.id}/edit`}
               className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700"
             >
               {t.edit}
@@ -168,7 +163,7 @@ export default async function InvoiceDetailPage({
 
             {invoice.public_token ? (
               <Link
-                href={`/public-invoice/${invoice.public_token}?lang=${lang}`}
+                href={`/public-invoice/${invoice.public_token}`}
                 className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white"
               >
                 {t.publicView}

@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
+import { getServerLang } from "@/lib/server-lang";
 
-type SearchParams = Promise<{ q?: string; lang?: "es" | "en" }>;
+type SearchParams = Promise<{ q?: string }>;
 
 type InvoiceRow = {
   id: string;
@@ -91,7 +92,6 @@ function money(value: number, currency = "USD") {
 
 function translateStatus(status: string | null, lang: "es" | "en") {
   const value = (status || "").toLowerCase();
-
   if (value === "paid") return lang === "es" ? "Pagada" : "Paid";
   if (value === "canceled") return lang === "es" ? "Cancelada" : "Canceled";
   return lang === "es" ? "Pendiente" : "Pending";
@@ -100,12 +100,8 @@ function translateStatus(status: string | null, lang: "es" | "en") {
 function statusClasses(status: string | null) {
   const value = (status || "").toLowerCase();
 
-  if (value === "paid") {
-    return "bg-emerald-50 text-emerald-700 border-emerald-200";
-  }
-  if (value === "canceled") {
-    return "bg-rose-50 text-rose-700 border-rose-200";
-  }
+  if (value === "paid") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (value === "canceled") return "bg-rose-50 text-rose-700 border-rose-200";
   return "bg-amber-50 text-amber-700 border-amber-200";
 }
 
@@ -114,9 +110,9 @@ export default async function InvoiceListPage({
 }: {
   searchParams?: SearchParams;
 }) {
-  const params = (await searchParams) ?? {};
-  const lang = params.lang === "en" ? "en" : "es";
+  const lang = await getServerLang();
   const t = translations[lang];
+  const params = (await searchParams) ?? {};
   const query = (params.q || "").trim().toLowerCase();
 
   const supabase = await createServerClient();
@@ -146,7 +142,8 @@ export default async function InvoiceListPage({
 
   if (query) {
     invoices = invoices.filter((invoice) => {
-      const haystack = `${invoice.invoice_number || ""} ${invoice.client_name || ""} ${invoice.client_email || ""}`.toLowerCase();
+      const haystack =
+        `${invoice.invoice_number || ""} ${invoice.client_name || ""} ${invoice.client_email || ""}`.toLowerCase();
       return haystack.includes(query);
     });
   }
@@ -200,30 +197,22 @@ export default async function InvoiceListPage({
         <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-slate-500">{t.totalInvoices}</p>
-            <p className="mt-3 text-3xl font-bold text-slate-950">
-              {totalInvoices}
-            </p>
+            <p className="mt-3 text-3xl font-bold text-slate-950">{totalInvoices}</p>
           </div>
 
           <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-slate-500">{t.paidInvoices}</p>
-            <p className="mt-3 text-3xl font-bold text-slate-950">
-              {paidInvoices}
-            </p>
+            <p className="mt-3 text-3xl font-bold text-slate-950">{paidInvoices}</p>
           </div>
 
           <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-slate-500">{t.pendingInvoices}</p>
-            <p className="mt-3 text-3xl font-bold text-slate-950">
-              {pendingInvoices}
-            </p>
+            <p className="mt-3 text-3xl font-bold text-slate-950">{pendingInvoices}</p>
           </div>
 
           <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-slate-500">{t.totalRevenue}</p>
-            <p className="mt-3 text-3xl font-bold text-slate-950">
-              {money(totalRevenue)}
-            </p>
+            <p className="mt-3 text-3xl font-bold text-slate-950">{money(totalRevenue)}</p>
           </div>
         </div>
 
@@ -243,7 +232,7 @@ export default async function InvoiceListPage({
               {t.search}
             </button>
             <Link
-              href={`/invoice?lang=${lang}`}
+              href="/invoice"
               className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 px-5 text-sm font-semibold text-slate-700"
             >
               {t.clear}
@@ -258,9 +247,7 @@ export default async function InvoiceListPage({
 
           {invoices.length === 0 ? (
             <div className="px-5 py-14 text-center sm:px-6">
-              <h3 className="text-xl font-bold text-slate-900">
-                {t.noInvoices}
-              </h3>
+              <h3 className="text-xl font-bold text-slate-900">{t.noInvoices}</h3>
               <p className="mt-2 text-sm text-slate-500">{t.noInvoicesText}</p>
               <Link
                 href="/invoice/new"
@@ -308,10 +295,7 @@ export default async function InvoiceListPage({
                         </span>
                       </td>
                       <td className="px-6 py-4 font-semibold text-slate-950">
-                        {money(
-                          Number(invoice.total || 0),
-                          invoice.currency || "USD"
-                        )}
+                        {money(Number(invoice.total || 0), invoice.currency || "USD")}
                       </td>
                       <td className="px-6 py-4 text-slate-500">
                         {invoice.issue_date
@@ -321,13 +305,13 @@ export default async function InvoiceListPage({
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
                           <Link
-                            href={`/invoice/${invoice.id}?lang=${lang}`}
+                            href={`/invoice/${invoice.id}`}
                             className="inline-flex rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                           >
                             {t.view}
                           </Link>
                           <Link
-                            href={`/invoice/${invoice.id}/edit?lang=${lang}`}
+                            href={`/invoice/${invoice.id}/edit`}
                             className="inline-flex rounded-xl bg-slate-950 px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90"
                           >
                             {t.edit}
