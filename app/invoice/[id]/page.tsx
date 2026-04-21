@@ -1,27 +1,118 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import Stripe from "stripe";
 import { createServerClient } from "@/lib/supabase/server";
-import InvoiceDetailScreen from "@/components/invoice/InvoiceDetailScreen";
 
-type PageProps = {
-  params: Promise<{ id: string }>;
-  searchParams?: Promise<{ paid?: string; canceled?: string; session_id?: string }>;
+type Params = Promise<{ id: string }>;
+type SearchParams = Promise<{ lang?: "es" | "en" }>;
+
+type InvoiceRow = {
+  id: string;
+  invoice_number: string | null;
+  client_name: string | null;
+  client_email: string | null;
+  status: string | null;
+  total: number | null;
+  subtotal: number | null;
+  tax: number | null;
+  currency: string | null;
+  issue_date: string | null;
+  due_date: string | null;
+  notes: string | null;
 };
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+type InvoiceItemRow = {
+  id: string;
+  description: string | null;
+  quantity: number | null;
+  unit_price: number | null;
+  total: number | null;
+};
 
-if (!stripeSecretKey) {
-  throw new Error("Falta STRIPE_SECRET_KEY en .env.local");
+const translations = {
+  es: {
+    back: "Volver",
+    edit: "Editar",
+    publicView: "Vista pública",
+    title: "Detalle de factura",
+    invoiceNumber: "Factura",
+    status: "Estado",
+    from: "De",
+    billTo: "Para",
+    issueDate: "Fecha de emisión",
+    dueDate: "Fecha de vencimiento",
+    noEmail: "Sin email",
+    items: "Conceptos",
+    description: "Descripción",
+    qty: "Cant.",
+    unitPrice: "Precio unitario",
+    total: "Total",
+    subtotal: "Subtotal",
+    tax: "Impuestos",
+    notes: "Notas",
+    paid: "Pagada",
+    pending: "Pendiente",
+    canceled: "Cancelada",
+    noItems: "No hay conceptos en esta factura.",
+  },
+  en: {
+    back: "Back",
+    edit: "Edit",
+    publicView: "Public view",
+    title: "Invoice detail",
+    invoiceNumber: "Invoice",
+    status: "Status",
+    from: "From",
+    billTo: "Bill to",
+    issueDate: "Issue date",
+    dueDate: "Due date",
+    noEmail: "No email",
+    items: "Items",
+    description: "Description",
+    qty: "Qty",
+    unitPrice: "Unit price",
+    total: "Total",
+    subtotal: "Subtotal",
+    tax: "Tax",
+    notes: "Notes",
+    paid: "Paid",
+    pending: "Pending",
+    canceled: "Canceled",
+    noItems: "There are no items in this invoice.",
+  },
+} as const;
+
+function money(value: number, currency = "USD") {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency || "USD",
+  }).format(value || 0);
 }
 
-const stripe = new Stripe(stripeSecretKey);
+function translateStatus(status: string | null, lang: "es" | "en") {
+  const value = (status || "").toLowerCase();
+  if (value === "paid") return lang === "es" ? "Pagada" : "Paid";
+  if (value === "canceled") return lang === "es" ? "Cancelada" : "Canceled";
+  return lang === "es" ? "Pendiente" : "Pending";
+}
+
+function statusClasses(status: string | null) {
+  const value = (status || "").toLowerCase();
+  if (value === "paid") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (value === "canceled") return "bg-rose-50 text-rose-700 border-rose-200";
+  return "bg-amber-50 text-amber-700 border-amber-200";
+}
 
 export default async function InvoiceDetailPage({
   params,
   searchParams,
-}: PageProps) {
+}: {
+  params: Params;
+  searchParams?: SearchParams;
+}) {
   const { id } = await params;
-  const query = searchParams ? await searchParams : {};
+  const sp = (await searchParams) ?? {};
+  const lang = sp.lang === "en" ? "en" : "es";
+  const t = translations[lang];
 
   const supabase = await createServerClient();
 
@@ -34,85 +125,187 @@ export default async function InvoiceDetailPage({
     redirect("/login");
   }
 
-  // Confirmación síncrona al volver desde Stripe
-  if (query?.paid === "1" && query?.session_id) {
-    try {
-      const session = await stripe.checkout.sessions.retrieve(query.session_id);
-
-      const invoiceIdFromSession = String(session.metadata?.invoice_id || "").trim();
-      const paymentStatus = String(session.payment_status || "").toLowerCase();
-
-      if (
-        invoiceIdFromSession === id &&
-        (paymentStatus === "paid" || session.status === "complete")
-      ) {
-        const paymentIntentId =
-          typeof session.payment_intent === "string"
-            ? session.payment_intent
-            : session.payment_intent?.id || null;
-
-        await supabase
-          .from("invoices")
-          .update({
-            status: "paid",
-            payment_status: "paid",
-            paid_at: new Date().toISOString(),
-            stripe_session_id: session.id,
-            stripe_payment_intent_id: paymentIntentId,
-            payment_email:
-              session.customer_details?.email || session.customer_email || null,
-            payment_currency: String(session.currency || "usd").toUpperCase(),
-            payment_amount: Number(session.amount_total || 0) / 100,
-          })
-          .eq("id", id)
-          .eq("user_id", user.id);
-      }
-    } catch (error) {
-      console.error("SYNC_PAYMENT_CONFIRM_ERROR", error);
-    }
-  }
-
   const { data: invoice, error: invoiceError } = await supabase
     .from("invoices")
-    .select("*")
+    .select(
+      "id, invoice_number, client_name, client_email, status, total, subtotal, tax, currency, issue_date, due_date, notes"
+    )
     .eq("id", id)
     .eq("user_id", user.id)
-    .maybeSingle();
+    .single<InvoiceRow>();
 
-  if (invoiceError) {
-    console.error("LOAD_INVOICE_ERROR", invoiceError);
+  if (invoiceError || !invoice) {
     notFound();
   }
 
-  if (!invoice) {
-    notFound();
-  }
-
-  const { data: items, error: itemsError } = await supabase
+  const { data: itemsData } = await supabase
     .from("invoice_items")
-    .select("*")
-    .eq("invoice_id", id)
-    .order("created_at", { ascending: true });
+    .select("id, description, quantity, unit_price, total")
+    .eq("invoice_id", invoice.id)
+    .order("id", { ascending: true });
 
-  if (itemsError) {
-    console.error("LOAD_INVOICE_ITEMS_ERROR", itemsError);
-    notFound();
-  }
-
-  const invoiceData = {
-    ...invoice,
-    items: (items || []).map((item) => ({
-      ...item,
-      unit_price: Number(item.unit_price || 0),
-      quantity: Number(item.quantity || 0),
-    })),
-  };
+  const items = (itemsData || []) as InvoiceItemRow[];
 
   return (
-    <InvoiceDetailScreen
-      invoice={invoiceData}
-      paymentSuccess={query?.paid === "1"}
-      paymentCanceled={query?.canceled === "1"}
-    />
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#eff6ff,_#f8fafc_45%,_#ffffff_100%)] px-4 py-8 md:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-6xl">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Link
+            href={`/invoice?lang=${lang}`}
+            className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700"
+          >
+            {t.back}
+          </Link>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link
+              href={`/invoice/${invoice.id}/edit?lang=${lang}`}
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700"
+            >
+              {t.edit}
+            </Link>
+            <Link
+              href={`/public-invoice/${invoice.id}?lang=${lang}`}
+              className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white"
+            >
+              {t.publicView}
+            </Link>
+          </div>
+        </div>
+
+        <div className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6 md:p-8">
+          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-500">{t.invoiceNumber}</p>
+              <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">
+                {invoice.invoice_number || "—"}
+              </h1>
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-slate-500">{t.status}</p>
+              <span
+                className={`mt-2 inline-flex rounded-full border px-4 py-2 text-sm font-semibold ${statusClasses(
+                  invoice.status
+                )}`}
+              >
+                {translateStatus(invoice.status, lang)}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                {t.from}
+              </p>
+              <p className="mt-3 text-lg font-bold text-slate-950">Tadeo Invoices</p>
+              <p className="mt-2 text-sm text-slate-500">billing@tadeoinvoices.com</p>
+            </div>
+
+            <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                {t.billTo}
+              </p>
+              <p className="mt-3 text-lg font-bold text-slate-950">
+                {invoice.client_name || "—"}
+              </p>
+              <p className="mt-2 text-sm text-slate-500">
+                {invoice.client_email || t.noEmail}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className="rounded-[24px] border border-slate-200 bg-white p-5">
+              <p className="text-sm font-medium text-slate-500">{t.issueDate}</p>
+              <p className="mt-2 text-base font-semibold text-slate-900">
+                {invoice.issue_date
+                  ? new Date(invoice.issue_date).toLocaleDateString()
+                  : "—"}
+              </p>
+            </div>
+
+            <div className="rounded-[24px] border border-slate-200 bg-white p-5">
+              <p className="text-sm font-medium text-slate-500">{t.dueDate}</p>
+              <p className="mt-2 text-base font-semibold text-slate-900">
+                {invoice.due_date
+                  ? new Date(invoice.due_date).toLocaleDateString()
+                  : "—"}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 overflow-hidden rounded-[28px] border border-slate-200">
+            <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
+              <h2 className="text-xl font-bold text-slate-950">{t.items}</h2>
+            </div>
+
+            {items.length === 0 ? (
+              <div className="px-5 py-8 text-sm text-slate-500">{t.noItems}</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-[760px] w-full text-left">
+                  <thead className="bg-slate-50">
+                    <tr className="text-sm text-slate-500">
+                      <th className="px-6 py-4 font-semibold">{t.description}</th>
+                      <th className="px-6 py-4 font-semibold">{t.qty}</th>
+                      <th className="px-6 py-4 font-semibold">{t.unitPrice}</th>
+                      <th className="px-6 py-4 font-semibold">{t.total}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item) => (
+                      <tr key={item.id} className="border-t border-slate-100 text-sm text-slate-700">
+                        <td className="px-6 py-4">{item.description || "—"}</td>
+                        <td className="px-6 py-4">{item.quantity || 0}</td>
+                        <td className="px-6 py-4">
+                          {money(Number(item.unit_price || 0), invoice.currency || "USD")}
+                        </td>
+                        <td className="px-6 py-4 font-semibold text-slate-950">
+                          {money(Number(item.total || 0), invoice.currency || "USD")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-8 ml-auto w-full max-w-md space-y-3">
+            <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-4">
+              <span className="text-sm text-slate-500">{t.subtotal}</span>
+              <span className="font-semibold text-slate-950">
+                {money(Number(invoice.subtotal || 0), invoice.currency || "USD")}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-4">
+              <span className="text-sm text-slate-500">{t.tax}</span>
+              <span className="font-semibold text-slate-950">
+                {money(Number(invoice.tax || 0), invoice.currency || "USD")}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between rounded-2xl bg-slate-950 px-5 py-4 text-white">
+              <span className="text-sm">{t.total}</span>
+              <span className="text-lg font-bold">
+                {money(Number(invoice.total || 0), invoice.currency || "USD")}
+              </span>
+            </div>
+          </div>
+
+          {invoice.notes ? (
+            <div className="mt-8 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+              <h3 className="text-lg font-bold text-slate-950">{t.notes}</h3>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-600">
+                {invoice.notes}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </main>
   );
 }
