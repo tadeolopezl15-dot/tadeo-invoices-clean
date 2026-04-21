@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 
@@ -38,6 +39,8 @@ const translations = {
     save: "Guardar cambios",
     cancel: "Cancelar",
     back: "Volver",
+    remove: "Quitar",
+    noItems: "No hay conceptos todavía.",
   },
   en: {
     title: "Edit invoice",
@@ -55,6 +58,8 @@ const translations = {
     save: "Save changes",
     cancel: "Cancel",
     back: "Back",
+    remove: "Remove",
+    noItems: "There are no items yet.",
   },
 } as const;
 
@@ -202,7 +207,9 @@ export default async function EditInvoicePage({
           <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">
             {t.title}
           </h1>
-          <p className="mt-2 text-sm text-slate-600 md:text-base">{t.subtitle}</p>
+          <p className="mt-2 text-sm text-slate-600 md:text-base">
+            {t.subtitle}
+          </p>
         </div>
 
         <form
@@ -287,7 +294,7 @@ export default async function EditInvoicePage({
             <h2 className="text-xl font-bold text-slate-950">{t.items}</h2>
 
             <div className="mt-4 space-y-4">
-              {items.map((item, index) => (
+              {items.map((item) => (
                 <div
                   key={item.id}
                   className="grid gap-4 rounded-[24px] border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_120px_160px]"
@@ -336,7 +343,7 @@ export default async function EditInvoicePage({
 
               {items.length === 0 ? (
                 <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
-                  No items yet.
+                  {t.noItems}
                 </div>
               ) : null}
             </div>
@@ -350,19 +357,19 @@ export default async function EditInvoicePage({
               {t.save}
             </button>
 
-            <a
+            <Link
               href={`/invoice/${invoice.id}?lang=${lang}`}
               className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700"
             >
               {t.cancel}
-            </a>
+            </Link>
 
-            <a
+            <Link
               href={`/invoice/${invoice.id}?lang=${lang}`}
               className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700"
             >
               {t.back}
-            </a>
+            </Link>
           </div>
         </form>
       </div>
