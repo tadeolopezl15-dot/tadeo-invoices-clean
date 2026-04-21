@@ -1,35 +1,18 @@
 "use client";
 
-import { useLanguage } from "@/components/LanguageProvider";
+import { useLang } from "@/components/LanguageProvider";
 
 export default function LanguageSwitcher() {
-  const { lang, setLang } = useLanguage();
+  const { lang, toggleLang } = useLang();
 
   return (
-    <div className="inline-flex items-center rounded-full border border-slate-300 bg-white p-1 shadow-sm">
-      <button
-        type="button"
-        onClick={() => setLang("en")}
-        className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
-          lang === "en"
-            ? "bg-[#2f5d9f] text-white"
-            : "text-slate-600 hover:text-black"
-        }`}
-      >
-        EN
-      </button>
-
-      <button
-        type="button"
-        onClick={() => setLang("es")}
-        className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
-          lang === "es"
-            ? "bg-yellow-400 text-black"
-            : "text-slate-600 hover:text-black"
-        }`}
-      >
-        ES
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={toggleLang}
+      className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+      aria-label="Switch language"
+    >
+      {lang === "es" ? "EN" : "ES"}
+    </button>
   );
 }

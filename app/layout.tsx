@@ -1,8 +1,10 @@
+import type { Metadata } from "next";
 import "./globals.css";
+import { LanguageProvider } from "@/components/LanguageProvider";
 
-export const metadata = {
-  title: "Tadeo Billing",
-  description: "Plataforma profesional de facturación",
+export const metadata: Metadata = {
+  title: "Tadeo Invoices",
+  description: "Crea, comparte y cobra facturas profesionalmente.",
 };
 
 export default function RootLayout({
@@ -12,7 +14,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        <LanguageProvider>{children}</LanguageProvider>
+      </body>
     </html>
   );
 }

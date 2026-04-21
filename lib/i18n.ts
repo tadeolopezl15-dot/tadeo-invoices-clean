@@ -2,322 +2,95 @@ export type Lang = "es" | "en";
 
 export const defaultLang: Lang = "es";
 
-export const translations = {
+export const messages = {
   es: {
     common: {
-      language: "Idioma",
-      spanish: "Español",
-      english: "Inglés",
-
-      dashboard: "Panel",
-      invoices: "Facturas",
-      settings: "Configuración",
+      home: "Inicio",
       pricing: "Precios",
-
-      login: "Iniciar sesión",
-      signup: "Crear cuenta",
-      logout: "Cerrar sesión",
-
+      clients: "Clientes",
+      login: "Login",
+      signup: "Empezar",
+      dashboard: "Dashboard",
+      settings: "Configuración",
+      reports: "Reportes",
+      invoices: "Facturas",
+      memberships: "Membresías",
       save: "Guardar",
       cancel: "Cancelar",
-      edit: "Editar",
-      delete: "Eliminar",
-      create: "Crear",
+      back: "Volver",
       search: "Buscar",
-
-      status: "Estado",
+      clear: "Limpiar",
+      loading: "Cargando...",
       paid: "Pagada",
       pending: "Pendiente",
-      overdue: "Vencida",
-
+      canceled: "Cancelada",
+      noEmail: "Sin email",
       total: "Total",
-      client: "Cliente",
-      date: "Fecha",
-      actions: "Acciones",
-
-      welcome: "Bienvenido",
-      description: "Descripción",
-      amount: "Monto",
-      name: "Nombre",
+      subtotal: "Subtotal",
+      tax: "Impuestos",
+      notes: "Notas",
+      status: "Estado",
       email: "Correo",
-      phone: "Teléfono",
-      company: "Empresa",
-
-      monthly: "Mensual",
-      yearly: "Anual",
-      free: "Gratis",
-
-      startNow: "Comenzar ahora",
-      getStarted: "Empezar",
-      choosePlan: "Elegir plan",
-    },
-
-    home: {
-      heroTitle: "Facturación profesional para tu negocio",
-      heroSubtitle: "Crea, envía y administra facturas en un solo lugar.",
-      heroButton: "Comenzar",
-
-      sectionTitle: "Todo lo que necesitas",
-      sectionSubtitle:
-        "Herramientas modernas para facturación, clientes y membresías.",
-    },
-
-    pricing: {
-      title: "Planes y precios",
-      subtitle: "Elige el plan ideal para tu negocio.",
-
-      starter: "Inicial",
-      pro: "Profesional",
-      business: "Empresarial",
-
-      starterDesc: "Ideal para empezar con facturas básicas.",
-      proDesc:
-        "Para negocios que necesitan más control y automatización.",
-      businessDesc:
-        "Para equipos y empresas con mayor volumen.",
-
-      perMonth: "/ mes",
-    },
-
-    dashboard: {
-      title: "Panel principal",
-      subtitle: "Resumen general de tu negocio",
-
-      totalInvoices: "Facturas totales",
-      paidInvoices: "Facturas pagadas",
-      pendingInvoices: "Facturas pendientes",
-      revenue: "Ingresos",
-
-      recentInvoices: "Facturas recientes",
-      topClients: "Mejores clientes",
-      monthlyReport: "Reporte mensual",
-    },
-
-    login: {
-      title: "Inicia sesión",
-      subtitle:
-        "Accede a tu cuenta para gestionar tu negocio.",
-
-      email: "Correo electrónico",
-      password: "Contraseña",
-
-      button: "Entrar",
-
-      noAccount: "¿No tienes cuenta?",
-      createOne: "Crear una cuenta",
-    },
-
-    signup: {
-      title: "Crear cuenta",
-      subtitle: "Empieza a usar la plataforma hoy.",
-
-      fullName: "Nombre completo",
-      companyName: "Nombre de empresa",
-      email: "Correo electrónico",
-      password: "Contraseña",
-
-      button: "Registrarme",
-
-      haveAccount: "¿Ya tienes cuenta?",
-      login: "Iniciar sesión",
-    },
-
-    settings: {
-      title: "Configuración",
-      subtitle:
-        "Administra la información de tu empresa",
-
-      companyInfo: "Información de la empresa",
-      logo: "Logo",
-      uploadLogo: "Subir logo",
-
-      companyName: "Nombre de la empresa",
-      companyEmail: "Correo de la empresa",
-      companyPhone: "Teléfono de la empresa",
-      address: "Dirección",
-      taxId: "Tax ID / RUC",
-
-      saveChanges: "Guardar cambios",
-    },
-
-    invoices: {
-      title: "Facturas",
-      subtitle: "Administra todas tus facturas",
-
-      newInvoice: "Nueva factura",
-      invoiceNumber: "Número de factura",
-
+      client: "Cliente",
+      amount: "Monto",
+      date: "Fecha",
+      action: "Acción",
       createInvoice: "Crear factura",
-      sendInvoice: "Enviar factura",
-
-      noInvoices: "No hay facturas aún",
-
-      markPaid: "Marcar como pagada",
-      markPending: "Marcar como pendiente",
+      newInvoice: "Nueva factura",
+      edit: "Editar",
+      view: "Ver",
+      publicView: "Vista pública",
+      getStarted: "Empezar",
+      menu: "Menú",
+      forgotPassword: "Recuperar contraseña",
+      updatePassword: "Actualizar contraseña",
     },
   },
-
   en: {
     common: {
-      language: "Language",
-      spanish: "Spanish",
-      english: "English",
-
-      dashboard: "Dashboard",
-      invoices: "Invoices",
-      settings: "Settings",
+      home: "Home",
       pricing: "Pricing",
-
-      login: "Log in",
-      signup: "Sign up",
-      logout: "Log out",
-
+      clients: "Clients",
+      login: "Login",
+      signup: "Get started",
+      dashboard: "Dashboard",
+      settings: "Settings",
+      reports: "Reports",
+      invoices: "Invoices",
+      memberships: "Memberships",
       save: "Save",
       cancel: "Cancel",
-      edit: "Edit",
-      delete: "Delete",
-      create: "Create",
+      back: "Back",
       search: "Search",
-
-      status: "Status",
+      clear: "Clear",
+      loading: "Loading...",
       paid: "Paid",
       pending: "Pending",
-      overdue: "Overdue",
-
+      canceled: "Canceled",
+      noEmail: "No email",
       total: "Total",
-      client: "Client",
-      date: "Date",
-      actions: "Actions",
-
-      welcome: "Welcome",
-      description: "Description",
-      amount: "Amount",
-      name: "Name",
+      subtotal: "Subtotal",
+      tax: "Tax",
+      notes: "Notes",
+      status: "Status",
       email: "Email",
-      phone: "Phone",
-      company: "Company",
-
-      monthly: "Monthly",
-      yearly: "Yearly",
-      free: "Free",
-
-      startNow: "Start now",
-      getStarted: "Get started",
-      choosePlan: "Choose plan",
-    },
-
-    home: {
-      heroTitle:
-        "Professional invoicing for your business",
-      heroSubtitle:
-        "Create, send, and manage invoices in one place.",
-      heroButton: "Get started",
-
-      sectionTitle: "Everything you need",
-      sectionSubtitle:
-        "Modern tools for invoicing, clients, and memberships.",
-    },
-
-    pricing: {
-      title: "Plans and pricing",
-      subtitle:
-        "Choose the ideal plan for your business.",
-
-      starter: "Starter",
-      pro: "Professional",
-      business: "Business",
-
-      starterDesc:
-        "Perfect for getting started with basic invoices.",
-      proDesc:
-        "For businesses that need more control and automation.",
-      businessDesc:
-        "For teams and companies with higher volume.",
-
-      perMonth: "/ month",
-    },
-
-    dashboard: {
-      title: "Main dashboard",
-      subtitle:
-        "General overview of your business",
-
-      totalInvoices: "Total invoices",
-      paidInvoices: "Paid invoices",
-      pendingInvoices: "Pending invoices",
-      revenue: "Revenue",
-
-      recentInvoices: "Recent invoices",
-      topClients: "Top clients",
-      monthlyReport: "Monthly report",
-    },
-
-    login: {
-      title: "Log in",
-      subtitle:
-        "Access your account to manage your business.",
-
-      email: "Email address",
-      password: "Password",
-
-      button: "Log in",
-
-      noAccount: "Don't have an account?",
-      createOne: "Create an account",
-    },
-
-    signup: {
-      title: "Create account",
-      subtitle:
-        "Start using the platform today.",
-
-      fullName: "Full name",
-      companyName: "Company name",
-      email: "Email address",
-      password: "Password",
-
-      button: "Sign up",
-
-      haveAccount: "Already have an account?",
-      login: "Log in",
-    },
-
-    settings: {
-      title: "Settings",
-      subtitle:
-        "Manage your company information",
-
-      companyInfo: "Company information",
-      logo: "Logo",
-      uploadLogo: "Upload logo",
-
-      companyName: "Company name",
-      companyEmail: "Company email",
-      companyPhone: "Company phone",
-      address: "Address",
-      taxId: "Tax ID",
-
-      saveChanges: "Save changes",
-    },
-
-    invoices: {
-      title: "Invoices",
-      subtitle: "Manage all your invoices",
-
-      newInvoice: "New invoice",
-      invoiceNumber: "Invoice number",
-
+      client: "Client",
+      amount: "Amount",
+      date: "Date",
+      action: "Action",
       createInvoice: "Create invoice",
-      sendInvoice: "Send invoice",
-
-      noInvoices: "No invoices yet",
-
-      markPaid: "Mark as paid",
-      markPending: "Mark as pending",
+      newInvoice: "New invoice",
+      edit: "Edit",
+      view: "View",
+      publicView: "Public view",
+      getStarted: "Get started",
+      menu: "Menu",
+      forgotPassword: "Forgot password",
+      updatePassword: "Update password",
     },
   },
 } as const;
 
 export function getTranslation(lang: Lang) {
-  return translations[lang] || translations[defaultLang];
+  return messages[lang];
 }
