@@ -1,17 +1,37 @@
-import { redirect } from "next/navigation";
-import { createServerClient } from "@/lib/supabase/server";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import LoginScreen from "@/components/login/LoginScreen";
 
-export default async function LoginPage() {
-  const supabase = await createServerClient();
+type Lang = "es" | "en";
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+const translations = {
+  es: {
+    badge: "Login seguro",
+    title: "Entra a tu panel y administra tu negocio.",
+    subtitle:
+      "Accede a tus facturas, clientes, configuración y pagos desde una experiencia limpia y profesional.",
+  },
+  en: {
+    badge: "Secure login",
+    title: "Access your dashboard and manage your business.",
+    subtitle:
+      "Access your invoices, clients, settings, and payments through a clean and professional experience.",
+  },
+} as const;
 
-  if (user) {
-    redirect("/dashboard");
-  }
+export default function LoginPage() {
+  const [lang, setLang] = useState<Lang>("es");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("app_lang");
+    if (saved === "es" || saved === "en") {
+      setLang(saved);
+      document.documentElement.lang = saved;
+    }
+  }, []);
+
+  const t = useMemo(() => translations[lang], [lang]);
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#eff6ff,_#f8fafc_45%,_#ffffff_100%)] px-4 py-8 md:px-6 md:py-12">
@@ -20,14 +40,13 @@ export default async function LoginPage() {
           <div className="hidden lg:block">
             <div className="max-w-xl">
               <p className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">
-                Login seguro
+                {t.badge}
               </p>
               <h1 className="mt-5 text-5xl font-bold tracking-tight text-slate-950">
-                Entra a tu panel y administra tu negocio.
+                {t.title}
               </h1>
               <p className="mt-4 text-lg leading-8 text-slate-600">
-                Accede a tus facturas, clientes, configuración y pagos desde una
-                experiencia limpia y profesional.
+                {t.subtitle}
               </p>
             </div>
           </div>

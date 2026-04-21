@@ -1,17 +1,37 @@
-import { redirect } from "next/navigation";
-import { createServerClient } from "@/lib/supabase/server";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import SignupScreen from "@/components/signup/SignupScreen";
 
-export default async function SignupPage() {
-  const supabase = await createServerClient();
+type Lang = "es" | "en";
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+const translations = {
+  es: {
+    badge: "Empieza hoy",
+    title: "Crea tu cuenta y empieza a facturar con estilo.",
+    subtitle:
+      "Diseñado para verse bien en móvil y en PC, con una experiencia moderna para negocios reales.",
+  },
+  en: {
+    badge: "Start today",
+    title: "Create your account and start invoicing with style.",
+    subtitle:
+      "Designed to look great on mobile and desktop, with a modern experience for real businesses.",
+  },
+} as const;
 
-  if (user) {
-    redirect("/dashboard");
-  }
+export default function SignupPage() {
+  const [lang, setLang] = useState<Lang>("es");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("app_lang");
+    if (saved === "es" || saved === "en") {
+      setLang(saved);
+      document.documentElement.lang = saved;
+    }
+  }, []);
+
+  const t = useMemo(() => translations[lang], [lang]);
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#eff6ff,_#f8fafc_45%,_#ffffff_100%)] px-4 py-8 md:px-6 md:py-12">
@@ -20,14 +40,13 @@ export default async function SignupPage() {
           <div className="hidden lg:block">
             <div className="max-w-xl">
               <p className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">
-                Empieza hoy
+                {t.badge}
               </p>
               <h1 className="mt-5 text-5xl font-bold tracking-tight text-slate-950">
-                Crea tu cuenta y empieza a facturar con estilo.
+                {t.title}
               </h1>
               <p className="mt-4 text-lg leading-8 text-slate-600">
-                Diseñado para verse bien en móvil y en PC, con una experiencia
-                moderna para negocios reales.
+                {t.subtitle}
               </p>
             </div>
           </div>

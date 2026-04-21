@@ -1,10 +1,47 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+type Lang = "es" | "en";
+
+const translations = {
+  es: {
+    pricing: "Precios",
+    clients: "Clientes",
+    login: "Login",
+    start: "Empezar",
+    menu: "Menú",
+  },
+  en: {
+    pricing: "Pricing",
+    clients: "Clients",
+    login: "Login",
+    start: "Get started",
+    menu: "Menu",
+  },
+} as const;
 
 export default function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const [lang, setLang] = useState<Lang>("es");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("app_lang");
+    if (saved === "es" || saved === "en") {
+      setLang(saved);
+      document.documentElement.lang = saved;
+    }
+  }, []);
+
+  function toggleLang() {
+    const next: Lang = lang === "es" ? "en" : "es";
+    setLang(next);
+    localStorage.setItem("app_lang", next);
+    document.documentElement.lang = next;
+  }
+
+  const t = translations[lang];
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur">
@@ -28,25 +65,34 @@ export default function SiteHeader() {
             href="/pricing"
             className="rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
           >
-            Pricing
+            {t.pricing}
           </Link>
           <Link
             href="/clientes"
             className="rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
           >
-            Clientes
+            {t.clients}
           </Link>
           <Link
             href="/login"
             className="rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
           >
-            Login
+            {t.login}
           </Link>
+
+          <button
+            type="button"
+            onClick={toggleLang}
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            {lang === "es" ? "EN" : "ES"}
+          </button>
+
           <Link
             href="/signup"
             className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
           >
-            Empezar
+            {t.start}
           </Link>
         </nav>
 
@@ -57,7 +103,7 @@ export default function SiteHeader() {
           aria-label="Abrir menú"
           aria-expanded={open}
         >
-          Menú
+          {t.menu}
         </button>
       </div>
 
@@ -69,28 +115,40 @@ export default function SiteHeader() {
               onClick={() => setOpen(false)}
               className="rounded-xl px-3 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
             >
-              Pricing
+              {t.pricing}
             </Link>
             <Link
               href="/clientes"
               onClick={() => setOpen(false)}
               className="rounded-xl px-3 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
             >
-              Clientes
+              {t.clients}
             </Link>
             <Link
               href="/login"
               onClick={() => setOpen(false)}
               className="rounded-xl px-3 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
             >
-              Login
+              {t.login}
             </Link>
+
+            <button
+              type="button"
+              onClick={() => {
+                toggleLang();
+                setOpen(false);
+              }}
+              className="rounded-xl border border-slate-200 px-3 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              {lang === "es" ? "English" : "Español"}
+            </button>
+
             <Link
               href="/signup"
               onClick={() => setOpen(false)}
               className="mt-1 inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white"
             >
-              Empezar
+              {t.start}
             </Link>
           </div>
         </div>
