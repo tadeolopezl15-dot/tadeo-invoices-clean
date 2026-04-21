@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 
-type SearchParams = Promise<{ lang?: "es" | "en" }>;
+type SearchParams = Promise<{ q?: string; lang?: "es" | "en" }>;
 
 type InvoiceRow = {
   id: string;
@@ -117,6 +117,7 @@ export default async function InvoiceListPage({
   const params = (await searchParams) ?? {};
   const lang = params.lang === "en" ? "en" : "es";
   const t = translations[lang];
+  const query = (params.q || "").trim().toLowerCase();
 
   const supabase = await createServerClient();
 
@@ -141,7 +142,14 @@ export default async function InvoiceListPage({
     console.error("INVOICE_LIST_ERROR", error);
   }
 
-  const invoices = (data || []) as InvoiceRow[];
+  let invoices = (data || []) as InvoiceRow[];
+
+  if (query) {
+    invoices = invoices.filter((invoice) => {
+      const haystack = `${invoice.invoice_number || ""} ${invoice.client_name || ""} ${invoice.client_email || ""}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }
 
   const totalInvoices = invoices.length;
   const paidInvoices = invoices.filter(
@@ -224,6 +232,7 @@ export default async function InvoiceListPage({
             <input
               type="text"
               name="q"
+              defaultValue={params.q || ""}
               placeholder={t.searchPlaceholder}
               className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white"
             />
@@ -312,13 +321,13 @@ export default async function InvoiceListPage({
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
                           <Link
-                            href={`/invoice/${invoice.id}`}
+                            href={`/invoice/${invoice.id}?lang=${lang}`}
                             className="inline-flex rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                           >
                             {t.view}
                           </Link>
                           <Link
-                            href={`/invoice/${invoice.id}/edit`}
+                            href={`/invoice/${invoice.id}/edit?lang=${lang}`}
                             className="inline-flex rounded-xl bg-slate-950 px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90"
                           >
                             {t.edit}

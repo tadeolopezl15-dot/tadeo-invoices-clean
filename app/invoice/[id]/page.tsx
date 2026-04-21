@@ -18,6 +18,7 @@ type InvoiceRow = {
   issue_date: string | null;
   due_date: string | null;
   notes: string | null;
+  public_token?: string | null;
 };
 
 type InvoiceItemRow = {
@@ -128,7 +129,7 @@ export default async function InvoiceDetailPage({
   const { data: invoice, error: invoiceError } = await supabase
     .from("invoices")
     .select(
-      "id, invoice_number, client_name, client_email, status, total, subtotal, tax, currency, issue_date, due_date, notes"
+      "id, invoice_number, client_name, client_email, status, total, subtotal, tax, currency, issue_date, due_date, notes, public_token"
     )
     .eq("id", id)
     .eq("user_id", user.id)
@@ -164,12 +165,15 @@ export default async function InvoiceDetailPage({
             >
               {t.edit}
             </Link>
-            <Link
-              href={`/public-invoice/${invoice.id}?lang=${lang}`}
-              className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white"
-            >
-              {t.publicView}
-            </Link>
+
+            {invoice.public_token ? (
+              <Link
+                href={`/public-invoice/${invoice.public_token}?lang=${lang}`}
+                className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white"
+              >
+                {t.publicView}
+              </Link>
+            ) : null}
           </div>
         </div>
 
