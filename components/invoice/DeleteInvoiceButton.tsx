@@ -1,45 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-
-type DeleteInvoiceButtonProps = {
-  invoiceId: string;
-  redirectTo?: string;
-};
 
 export default function DeleteInvoiceButton({
   invoiceId,
-  redirectTo = "/invoice",
-}: DeleteInvoiceButtonProps) {
+  label = "Eliminar",
+  confirmText = "¿Seguro que deseas eliminar esta factura?",
+}: {
+  invoiceId: string;
+  label?: string;
+  confirmText?: string;
+}) {
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   async function handleDelete() {
-    const ok = window.confirm(
-      "¿Seguro que quieres eliminar esta factura? Esta acción no se puede deshacer."
-    );
-
+    const ok = window.confirm(confirmText);
     if (!ok) return;
 
     try {
       setLoading(true);
 
       const res = await fetch(`/api/invoices/${invoiceId}/delete`, {
-        method: "POST",
+        method: "DELETE",
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        throw new Error(data?.error || "No se pudo eliminar la factura");
+        throw new Error("No se pudo eliminar");
       }
 
-      router.push(redirectTo);
-      router.refresh();
+      // Redirigir al listado de facturas
+      window.location.href = "/invoice";
     } catch (error) {
+      alert("Error eliminando la factura");
       console.error(error);
-      alert("No se pudo eliminar la factura");
+    } finally {
       setLoading(false);
     }
   }
@@ -49,9 +43,9 @@ export default function DeleteInvoiceButton({
       type="button"
       onClick={handleDelete}
       disabled={loading}
-      className="rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition hover:bg-red-500/20 disabled:opacity-60"
+      className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {loading ? "Eliminando..." : "Eliminar"}
+      {loading ? "Eliminando..." : label}
     </button>
   );
 }
