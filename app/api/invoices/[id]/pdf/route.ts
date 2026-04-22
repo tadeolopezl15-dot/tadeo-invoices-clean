@@ -4,6 +4,13 @@ import { createServerClient } from "@/lib/supabase/server";
 
 type Params = Promise<{ id: string }>;
 
+async function fetchImageBytes(url: string) {
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const arrayBuffer = await res.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
 export async function GET(
   _req: Request,
   context: { params: Params }
@@ -48,86 +55,132 @@ export async function GET(
 
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([595, 842]);
-
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-    let y = 790;
+    const pageWidth = page.getWidth();
+    const pageHeight = page.getHeight();
+
+    let y = pageHeight - 60;
+
+    if (profile?.logo_url) {
+      try {
+        const imageBytes = await fetchImageBytes(profile.logo_url);
+
+        if (imageBytes) {
+          let embeddedImage;
+          const lower = profile.logo_url.toLowerCase();
+
+          if (lower.includes(".png") || lower.includes("image/png")) {
+            embeddedImage = await pdfDoc.embedPng(imageBytes);
+          } else {
+            embeddedImage = await pdfDoc.embedJpg(imageBytes);
+          }
+
+          const dims = embeddedImage.scale(1);
+          const maxWidth = 120;
+          const maxHeight = 70;
+          const scale = Math.min(maxWidth / dims.width, maxHeight / dims.height, 1);
+
+          page.drawImage(embeddedImage, {
+            x: 50,
+            y: y - dims.height * scale + 10,
+            width: dims.width * scale,
+            height: dims.height * scale,
+          });
+        }
+      } catch (e) {
+        console.error("PDF_LOGO_EMBED_ERROR", e);
+      }
+    }
 
     page.drawText(profile?.company_name || "Tadeo Invoices", {
-      x: 50,
+      x: 190,
       y,
-      size: 22,
+      size: 20,
       font: fontBold,
       color: rgb(0.1, 0.1, 0.12),
     });
 
-    y -= 28;
+    y -= 24;
 
     if (profile?.company_email) {
       page.drawText(profile.company_email, {
-        x: 50,
+        x: 190,
         y,
-        size: 11,
+        size: 10,
         font,
         color: rgb(0.35, 0.35, 0.4),
       });
-      y -= 16;
+      y -= 14;
     }
 
     if (profile?.company_phone) {
       page.drawText(profile.company_phone, {
-        x: 50,
+        x: 190,
         y,
-        size: 11,
+        size: 10,
         font,
         color: rgb(0.35, 0.35, 0.4),
       });
-      y -= 16;
+      y -= 14;
     }
 
     if (profile?.company_address) {
       page.drawText(profile.company_address, {
-        x: 50,
+        x: 190,
         y,
-        size: 11,
+        size: 10,
         font,
         color: rgb(0.35, 0.35, 0.4),
       });
     }
 
     page.drawText(`Invoice ${invoice.invoice_number || ""}`, {
-      x: 380,
-      y: 790,
+      x: 390,
+      y: pageHeight - 60,
       size: 18,
       font: fontBold,
       color: rgb(0.1, 0.1, 0.12),
     });
 
     page.drawText(`Client: ${invoice.client_name || "-"}`, {
-      x: 380,
-      y: 764,
-      size: 11,
+      x: 390,
+      y: pageHeight - 86,
+      size: 10,
       font,
       color: rgb(0.35, 0.35, 0.4),
     });
 
     page.drawText(`Email: ${invoice.client_email || "-"}`, {
-      x: 380,
-      y: 748,
-      size: 11,
+      x: 390,
+      y: pageHeight - 100,
+      size: 10,
       font,
       color: rgb(0.35, 0.35, 0.4),
     });
 
+    page.drawText(
+      `Issue: ${
+        invoice.issue_date ? new Date(invoice.issue_date).toLocaleDateString() : "-"
+      }`,
+      {
+        x: 390,
+        y: pageHeight - 114,
+        size: 10,
+        font,
+        color: rgb(0.35, 0.35, 0.4),
+      }
+    );
+
     page.drawLine({
-      start: { x: 50, y: 710 },
-      end: { x: 545, y: 710 },
+      start: { x: 50, y: 680 },
+      end: { x: 545, y: 680 },
       thickness: 1,
       color: rgb(0.88, 0.88, 0.9),
     });
 
-    let tableY = 680;
+    let tableY = 655;
 
     page.drawText("Description", {
       x: 50,
@@ -167,6 +220,7 @@ export async function GET(
         size: 10,
         font,
         color: rgb(0.1, 0.1, 0.12),
+        maxWidth: 260,
       });
 
       page.drawText(String(item.quantity || 0), {

@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 
-type RouteProps = {
-  params: Promise<{ id: string }>;
-};
+type Params = Promise<{ id: string }>;
 
-export async function POST(_request: Request, { params }: RouteProps) {
+export async function POST(
+  _req: Request,
+  context: { params: Params }
+) {
   try {
-    const { id } = await params;
-
+    const { id } = await context.params;
     const supabase = await createServerClient();
 
     const {
@@ -17,7 +17,7 @@ export async function POST(_request: Request, { params }: RouteProps) {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+      return NextResponse.redirect(new URL("/login", "http://localhost:3000"));
     }
 
     const { data: invoice, error: invoiceError } = await supabase
@@ -25,48 +25,36 @@ export async function POST(_request: Request, { params }: RouteProps) {
       .select("id")
       .eq("id", id)
       .eq("user_id", user.id)
-      .maybeSingle();
+      .single();
 
     if (invoiceError || !invoice) {
-      return NextResponse.json(
-        { error: "Factura no encontrada" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Factura no encontrada" }, { status: 404 });
     }
 
-    const { error: deleteItemsError } = await supabase
+    const { error: itemsError } = await supabase
       .from("invoice_items")
       .delete()
       .eq("invoice_id", id);
 
-    if (deleteItemsError) {
-      console.error("DELETE_INVOICE_ITEMS_ERROR", deleteItemsError);
-      return NextResponse.json(
-        { error: "No se pudieron eliminar los conceptos" },
-        { status: 500 }
-      );
+    if (itemsError) {
+      console.error("DELETE_INVOICE_ITEMS_ERROR", itemsError);
+      return NextResponse.json({ error: "No se pudieron borrar los conceptos" }, { status: 500 });
     }
 
-    const { error: deleteInvoiceError } = await supabase
+    const { error: invoiceDeleteError } = await supabase
       .from("invoices")
       .delete()
       .eq("id", id)
       .eq("user_id", user.id);
 
-    if (deleteInvoiceError) {
-      console.error("DELETE_INVOICE_ERROR", deleteInvoiceError);
-      return NextResponse.json(
-        { error: "No se pudo eliminar la factura" },
-        { status: 500 }
-      );
+    if (invoiceDeleteError) {
+      console.error("DELETE_INVOICE_ERROR", invoiceDeleteError);
+      return NextResponse.json({ error: "No se pudo borrar la factura" }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.redirect(new URL("/invoice", process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"));
   } catch (error) {
     console.error("DELETE_INVOICE_ROUTE_ERROR", error);
-    return NextResponse.json(
-      { error: "Error interno eliminando la factura" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Error inesperado" }, { status: 500 });
   }
 }

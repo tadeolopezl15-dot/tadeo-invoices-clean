@@ -8,7 +8,6 @@ import { useLang } from "@/components/LanguageProvider";
 
 export default function SignupScreen() {
   const router = useRouter();
-  const supabase = createBrowserClient();
   const { t, lang } = useLang();
 
   const [fullName, setFullName] = useState("");
@@ -24,6 +23,8 @@ export default function SignupScreen() {
     setLoading(true);
     setError("");
     setSuccess("");
+
+    const supabase = createBrowserClient();
 
     const { data, error } = await supabase.auth.signUp({
       email,
