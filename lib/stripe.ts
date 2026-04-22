@@ -1,15 +1,15 @@
 import Stripe from "stripe";
 
-export function createStripeClient() {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+let stripeClient: Stripe | null = null;
 
-  if (!secretKey) {
-    throw new Error("Falta STRIPE_SECRET_KEY");
+export function getStripe() {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error("Missing STRIPE_SECRET_KEY");
   }
 
-  return new Stripe(secretKey, {
-    apiVersion: "2025-08-27.basil",
-  });
-}
+  if (!stripeClient) {
+    stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY);
+  }
 
-export const stripe = createStripeClient();
+  return stripeClient;
+}
