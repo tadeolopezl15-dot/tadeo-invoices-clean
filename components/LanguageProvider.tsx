@@ -7,6 +7,7 @@ type Lang = "es" | "en";
 type LanguageContextType = {
   lang: Lang;
   setLang: (lang: Lang) => void;
+  toggleLang: () => void;
   t: any;
 };
 
@@ -16,8 +17,16 @@ const translations = {
       login: "Iniciar sesión",
       signup: "Crear cuenta",
       email: "Correo",
+      password: "Contraseña",
       loading: "Cargando...",
       forgotPassword: "¿Olvidaste tu contraseña?",
+      logout: "Cerrar sesión",
+      dashboard: "Panel",
+      invoices: "Facturas",
+      clients: "Clientes",
+      settings: "Configuración",
+      save: "Guardar",
+      delete: "Eliminar",
     },
   },
   en: {
@@ -25,8 +34,16 @@ const translations = {
       login: "Login",
       signup: "Sign up",
       email: "Email",
+      password: "Password",
       loading: "Loading...",
       forgotPassword: "Forgot password?",
+      logout: "Logout",
+      dashboard: "Dashboard",
+      invoices: "Invoices",
+      clients: "Clients",
+      settings: "Settings",
+      save: "Save",
+      delete: "Delete",
     },
   },
 };
@@ -35,10 +52,12 @@ const LanguageContext = createContext<LanguageContextType | null>(null);
 
 export function LanguageProvider({
   children,
+  initialLang = "es",
 }: {
   children: React.ReactNode;
+  initialLang?: Lang;
 }) {
-  const [lang, setLangState] = useState<Lang>("es");
+  const [lang, setLangState] = useState<Lang>(initialLang);
 
   useEffect(() => {
     const saved = localStorage.getItem("app_lang") as Lang | null;
@@ -51,11 +70,17 @@ export function LanguageProvider({
     document.documentElement.lang = newLang;
   }
 
+  function toggleLang() {
+    const newLang = lang === "es" ? "en" : "es";
+    setLang(newLang);
+  }
+
   return (
     <LanguageContext.Provider
       value={{
         lang,
         setLang,
+        toggleLang,
         t: translations[lang],
       }}
     >
@@ -71,3 +96,6 @@ export function useLanguage() {
   }
   return ctx;
 }
+
+// compatibilidad con tu código actual
+export const useLang = useLanguage;
