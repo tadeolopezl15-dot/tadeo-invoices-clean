@@ -1,31 +1,18 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
+import AppHeader from "@/components/AppHeader";
 import NewInvoiceScreen from "@/components/invoice/NewInvoiceScreen";
 
-type SearchParams = Promise<{ lang?: "es" | "en" }>;
+type Plan = "starter" | "pro" | "business";
 
-const translations = {
-  es: {
-    title: "Nueva factura",
-    subtitle:
-      "Crea una factura optimizada para móvil y escritorio con una experiencia profesional.",
-  },
-  en: {
-    title: "New invoice",
-    subtitle:
-      "Create an invoice optimized for mobile and desktop with a professional experience.",
-  },
-} as const;
+function invoiceLimit(plan: Plan) {
+  if (plan === "starter") return 5;
+  if (plan === "pro") return 50;
+  return Number.POSITIVE_INFINITY;
+}
 
-export default async function NewInvoicePage({
-  searchParams,
-}: {
-  searchParams?: SearchParams;
-}) {
-  const params = (await searchParams) ?? {};
-  const lang = params.lang === "en" ? "en" : "es";
-  const t = translations[lang];
-
+export default async function NewInvoicePage() {
   const supabase = await createServerClient();
 
   const {
@@ -37,128 +24,77 @@ export default async function NewInvoicePage({
     redirect("/login");
   }
 
-  async function createInvoice(formData: FormData) {
-    "use server";
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("plan")
+    .eq("id", user.id)
+    .single();
 
-    const supabase = await createServerClient();
+  const plan = (profile?.plan || "starter") as Plan;
+  const limit = invoiceLimit(plan);
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+  const { count } = await supabase
+    .from("invoices")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id);
 
-    if (userError || !user) {
-      redirect("/login");
-    }
+  if ((count || 0) >= limit) {
+    return (
+      <main className="ui-page">
+        <AppHeader />
 
-    const clientName = String(formData.get("client_name") || "").trim();
-    const clientEmail = String(formData.get("client_email") || "").trim();
-    const issueDate = String(formData.get("issue_date") || "").trim();
-    const dueDate = String(formData.get("due_date") || "").trim();
-    const notes = String(formData.get("notes") || "").trim();
-    const currency = String(formData.get("currency") || "USD").trim() || "USD";
+        <div className="ui-shell">
+          <section className="ui-card p-8 text-center">
+            <div className="ui-badge">Plan limit</div>
 
-    const descriptions = formData.getAll("item_description");
-    const quantities = formData.getAll("item_quantity");
-    const unitPrices = formData.getAll("item_unit_price");
+            <h1 className="mt-5 text-4xl font-extrabold tracking-tight text-slate-950 md:text-5xl">
+              Límite de facturas alcanzado
+            </h1>
 
-    if (!clientName) {
-      redirect(`/invoice/new?lang=${lang}&error=client`);
-    }
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-slate-600">
+              Tu plan actual es <strong>{plan}</strong> y permite crear hasta{" "}
+              <strong>{limit}</strong> facturas. Sube de plan para crear más
+              facturas y desbloquear funciones premium.
+            </p>
 
-    const parsedItems = descriptions
-      .map((description, index) => {
-        const desc = String(description || "").trim();
-        const qty = Number(quantities[index] || 0);
-        const price = Number(unitPrices[index] || 0);
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link href="/pricing" className="btn btn-primary">
+                Upgrade plan
+              </Link>
 
-        if (!desc) return null;
-        if (!Number.isFinite(qty) || qty <= 0) return null;
-        if (!Number.isFinite(price) || price < 0) return null;
-
-        return {
-          description: desc,
-          quantity: qty,
-          unit_price: price,
-          total: qty * price,
-        };
-      })
-      .filter(Boolean) as Array<{
-        description: string;
-        quantity: number;
-        unit_price: number;
-        total: number;
-      }>;
-
-    if (parsedItems.length === 0) {
-      redirect(`/invoice/new?lang=${lang}&error=items`);
-    }
-
-    const subtotal = parsedItems.reduce((sum, item) => sum + item.total, 0);
-    const tax = 0;
-    const total = subtotal + tax;
-    const invoiceNumber = `INV-${Date.now().toString().slice(-8)}`;
-
-    const { data: invoice, error: invoiceError } = await supabase
-      .from("invoices")
-      .insert({
-        user_id: user.id,
-        invoice_number: invoiceNumber,
-        client_name: clientName,
-        client_email: clientEmail || null,
-        status: "pending",
-        issue_date: issueDate || new Date().toISOString(),
-        due_date: dueDate || null,
-        notes: notes || null,
-        subtotal,
-        tax,
-        total,
-        currency,
-      })
-      .select("id")
-      .single();
-
-    if (invoiceError || !invoice) {
-      console.error("CREATE_INVOICE_ERROR", invoiceError);
-      redirect(`/invoice/new?lang=${lang}&error=create`);
-    }
-
-    const itemsToInsert = parsedItems.map((item) => ({
-      invoice_id: invoice.id,
-      description: item.description,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      total: item.total,
-    }));
-
-    const { error: itemsError } = await supabase
-      .from("invoice_items")
-      .insert(itemsToInsert);
-
-    if (itemsError) {
-      console.error("CREATE_INVOICE_ITEMS_ERROR", itemsError);
-      await supabase.from("invoices").delete().eq("id", invoice.id);
-      redirect(`/invoice/new?lang=${lang}&error=items-save`);
-    }
-
-    redirect(`/invoice/${invoice.id}`);
+              <Link href="/invoice" className="btn btn-secondary">
+                Ver facturas
+              </Link>
+            </div>
+          </section>
+        </div>
+      </main>
+    );
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#eff6ff,_#f8fafc_45%,_#ffffff_100%)] px-4 py-8 md:px-6 md:py-10">
-      <div className="mx-auto w-full max-w-6xl">
-        <div className="mb-6 rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6 md:p-8">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">
-            {t.title}
-          </h1>
-          <p className="mt-2 text-sm text-slate-600 md:text-base">
-            {t.subtitle}
-          </p>
-        </div>
+    <main className="ui-page">
+      <AppHeader />
 
-        <div className="rounded-[30px] border border-slate-200 bg-white p-4 shadow-sm sm:p-6 md:p-8">
-          <NewInvoiceScreen action={createInvoice} />
-        </div>
+      <div className="ui-shell">
+        <section className="ui-card p-6 md:p-8">
+          <div className="ui-badge">Nueva factura</div>
+
+          <h1 className="mt-5 text-4xl font-extrabold tracking-tight text-slate-950 md:text-6xl">
+            Crear factura
+          </h1>
+
+          <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600 md:text-xl">
+            Plan actual: <strong>{plan}</strong>. Has creado{" "}
+            <strong>{count || 0}</strong> de{" "}
+            <strong>{Number.isFinite(limit) ? limit : "ilimitadas"}</strong>{" "}
+            facturas disponibles.
+          </p>
+        </section>
+
+        <section className="mt-6">
+          <NewInvoiceScreen />
+        </section>
       </div>
     </main>
   );

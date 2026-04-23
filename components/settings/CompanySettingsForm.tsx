@@ -13,13 +13,17 @@ type InitialData = {
 
 export default function CompanySettingsForm({
   initialData,
+  canUseLogo,
 }: {
   initialData: InitialData;
+  canUseLogo: boolean;
 }) {
   const [companyName, setCompanyName] = useState(initialData.company_name);
   const [companyEmail, setCompanyEmail] = useState(initialData.company_email);
   const [companyPhone, setCompanyPhone] = useState(initialData.company_phone);
-  const [companyAddress, setCompanyAddress] = useState(initialData.company_address);
+  const [companyAddress, setCompanyAddress] = useState(
+    initialData.company_address
+  );
   const [logoUrl, setLogoUrl] = useState(initialData.logo_url);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -43,15 +47,17 @@ export default function CompanySettingsForm({
         throw new Error("No autorizado");
       }
 
+      const updateData = {
+        company_name: companyName || null,
+        company_email: companyEmail || null,
+        company_phone: companyPhone || null,
+        company_address: companyAddress || null,
+        logo_url: canUseLogo ? logoUrl || null : null,
+      };
+
       const { error } = await supabase
         .from("profiles")
-        .update({
-          company_name: companyName || null,
-          company_email: companyEmail || null,
-          company_phone: companyPhone || null,
-          company_address: companyAddress || null,
-          logo_url: logoUrl || null,
-        })
+        .update(updateData)
         .eq("id", user.id);
 
       if (error) {
@@ -107,23 +113,37 @@ export default function CompanySettingsForm({
           />
 
           <label className="ui-label mt-4">Logo URL</label>
-          <input
-            className="ui-input"
-            value={logoUrl}
-            onChange={(e) => setLogoUrl(e.target.value)}
-            placeholder="https://..."
-          />
 
-          {logoUrl ? (
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={logoUrl}
-                alt="Logo preview"
-                className="max-h-20 w-auto object-contain"
+          {canUseLogo ? (
+            <>
+              <input
+                className="ui-input"
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+                placeholder="https://..."
               />
+
+              {logoUrl ? (
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={logoUrl}
+                    alt="Logo preview"
+                    className="max-h-20 w-auto object-contain"
+                  />
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+              <p className="text-sm font-semibold text-blue-700">
+                Logo disponible solo en Pro o Business.
+              </p>
+              <a href="/pricing" className="btn btn-primary mt-4">
+                Upgrade
+              </a>
             </div>
-          ) : null}
+          )}
         </div>
       </div>
 
@@ -133,7 +153,11 @@ export default function CompanySettingsForm({
         </button>
 
         {message ? (
-          <p className={`text-sm ${isError ? "text-rose-600" : "text-emerald-600"}`}>
+          <p
+            className={`text-sm ${
+              isError ? "text-rose-600" : "text-emerald-600"
+            }`}
+          >
             {message}
           </p>
         ) : null}

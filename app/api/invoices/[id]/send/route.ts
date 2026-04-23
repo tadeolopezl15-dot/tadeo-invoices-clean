@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
 
 type Params = Promise<{ id: string }>;
+type Plan = "starter" | "pro" | "business";
 
 type InvoiceRow = {
   id: string;
@@ -16,6 +17,7 @@ type InvoiceRow = {
 };
 
 type ProfileRow = {
+  plan: Plan | null;
   company_name: string | null;
   company_email: string | null;
   company_phone: string | null;
@@ -32,6 +34,10 @@ function money(value: number, currency = "USD") {
   }).format(value || 0);
 }
 
+function canSendEmail(plan: Plan) {
+  return plan === "pro" || plan === "business";
+}
+
 function getTranslations(lang: "es" | "en") {
   if (lang === "en") {
     return {
@@ -41,13 +47,15 @@ function getTranslations(lang: "es" | "en") {
       company: "Company",
       invoiceTotal: "Invoice total",
       openInvoice: "Open invoice",
-      replyHelp: "If you have any questions, reply directly to this email and your message will go to",
+      replyHelp:
+        "If you have any questions, reply directly to this email and your message will go to",
       missingClientEmail: "This invoice does not have a client email",
       notAuthorized: "Unauthorized",
       notFound: "Invoice not found",
       sendError: "Could not send the email",
       pdfName: "invoice",
       clientWord: "client",
+      upgrade: "Upgrade to Pro to send invoices by email",
     };
   }
 
@@ -58,20 +66,19 @@ function getTranslations(lang: "es" | "en") {
     company: "Empresa",
     invoiceTotal: "Total de la factura",
     openInvoice: "Abrir factura",
-    replyHelp: "Si tienes alguna pregunta, responde directamente a este correo y tu mensaje llegará a",
+    replyHelp:
+      "Si tienes alguna pregunta, responde directamente a este correo y tu mensaje llegará a",
     missingClientEmail: "La factura no tiene correo del cliente",
     notAuthorized: "No autorizado",
     notFound: "Factura no encontrada",
     sendError: "No se pudo enviar el email",
     pdfName: "factura",
     clientWord: "cliente",
+    upgrade: "Sube a Pro para enviar facturas por email",
   };
 }
 
-export async function POST(
-  _req: Request,
-  context: { params: Params }
-) {
+export async function POST(_req: Request, context: { params: Params }) {
   try {
     const { id } = await context.params;
     const supabase = await createServerClient();
@@ -90,7 +97,9 @@ export async function POST(
 
     const { data: invoice, error: invoiceError } = await supabase
       .from("invoices")
-      .select("id, invoice_number, client_name, client_email, total, currency, public_token")
+      .select(
+        "id, invoice_number, client_name, client_email, total, currency, public_token"
+      )
       .eq("id", id)
       .eq("user_id", user.id)
       .single<InvoiceRow>();
@@ -108,9 +117,17 @@ export async function POST(
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("company_name, company_email, company_phone, company_address, logo_url")
+      .select(
+        "plan, company_name, company_email, company_phone, company_address, logo_url"
+      )
       .eq("id", user.id)
       .single<ProfileRow>();
+
+    const plan = (profile?.plan || "starter") as Plan;
+
+    if (!canSendEmail(plan)) {
+      return NextResponse.json({ error: tr.upgrade }, { status: 403 });
+    }
 
     const companyName = profile?.company_name || "Tadeo Invoices";
     const companyEmail = profile?.company_email || undefined;
@@ -156,11 +173,15 @@ export async function POST(
       from: "Tadeo Invoices <onboarding@resend.dev>",
       to: invoice.client_email,
       replyTo: companyEmail,
-      subject: `${tr.subjectPrefix} ${invoice.invoice_number || ""} - ${companyName}`,
+      subject: `${tr.subjectPrefix} ${
+        invoice.invoice_number || ""
+      } - ${companyName}`,
       attachments: pdfBase64
         ? [
             {
-              filename: `${tr.pdfName}-${invoice.invoice_number || invoice.id}.pdf`,
+              filename: `${tr.pdfName}-${
+                invoice.invoice_number || invoice.id
+              }.pdf`,
               content: pdfBase64,
             },
           ]
@@ -222,10 +243,7 @@ export async function POST(
               </div>
 
               <div style="margin:28px 0;">
-                <a
-                  href="${publicUrl}"
-                  style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:16px;font-weight:700;font-size:14px;"
-                >
+                <a href="${publicUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:16px;font-weight:700;font-size:14px;">
                   ${tr.openInvoice}
                 </a>
               </div>
@@ -242,12 +260,9 @@ export async function POST(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("SEND_INVOICE_EMAIL_ERROR", error);
-    const cookieStore = await cookies();
-    const lang = cookieStore.get("app_lang")?.value === "en" ? "en" : "es";
-    const tr = getTranslations(lang);
 
     return NextResponse.json(
-      { error: tr.sendError },
+      { error: "No se pudo enviar el email" },
       { status: 500 }
     );
   }

@@ -21,11 +21,13 @@ function getAdminSupabase() {
 }
 
 function mapPriceIdToPlan(priceId: string | null | undefined) {
-  if (!priceId) return null;
+  if (!priceId) return "starter";
+
   if (priceId === process.env.STRIPE_PRICE_ID_STARTER) return "starter";
   if (priceId === process.env.STRIPE_PRICE_ID_PRO) return "pro";
   if (priceId === process.env.STRIPE_PRICE_ID_BUSINESS) return "business";
-  return null;
+
+  return "starter";
 }
 
 export async function POST(req: Request) {
@@ -40,7 +42,7 @@ export async function POST(req: Request) {
 
     if (!signature || !webhookSecret) {
       return NextResponse.json(
-        { error: "Missing Stripe webhook signature or secret" },
+        { error: "Missing Stripe signature or webhook secret" },
         { status: 400 }
       );
     }
@@ -51,79 +53,83 @@ export async function POST(req: Request) {
       webhookSecret
     );
 
-    switch (event.type) {
-      case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session;
-        const userId = session.metadata?.user_id;
-        const plan = session.metadata?.plan;
-        const customerId =
-          typeof session.customer === "string" ? session.customer : null;
-        const subscriptionId =
-          typeof session.subscription === "string" ? session.subscription : null;
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
 
-        if (userId) {
-          await supabaseAdmin
-            .from("profiles")
-            .update({
-              plan: plan || "starter",
-              stripe_customer_id: customerId,
-              subscription_id: subscriptionId,
-              subscription_status: "active",
-            })
-            .eq("id", userId);
-        }
-        break;
+      const userId = session.metadata?.user_id || null;
+      const plan = session.metadata?.plan || "starter";
+      const customerId =
+        typeof session.customer === "string" ? session.customer : null;
+      const subscriptionId =
+        typeof session.subscription === "string"
+          ? session.subscription
+          : null;
+
+      if (userId) {
+        await supabaseAdmin
+          .from("profiles")
+          .update({
+            plan,
+            stripe_customer_id: customerId,
+            subscription_id: subscriptionId,
+            subscription_status: "active",
+          })
+          .eq("id", userId);
       }
+    }
 
-      case "customer.subscription.updated":
-      case "customer.subscription.created": {
-        const subscription = event.data.object as Stripe.Subscription;
-        const userId = subscription.metadata?.user_id || null;
-        const firstItem = subscription.items.data[0];
-        const priceId = firstItem?.price?.id || null;
-        const plan =
-          subscription.metadata?.plan || mapPriceIdToPlan(priceId) || "starter";
-        const customerId =
-          typeof subscription.customer === "string" ? subscription.customer : null;
+    if (
+      event.type === "customer.subscription.created" ||
+      event.type === "customer.subscription.updated"
+    ) {
+      const subscription = event.data.object as Stripe.Subscription;
 
-        if (userId) {
-          await supabaseAdmin
-            .from("profiles")
-            .update({
-              plan,
-              stripe_customer_id: customerId,
-              subscription_id: subscription.id,
-              subscription_status: subscription.status,
-            })
-            .eq("id", userId);
-        }
-        break;
+      const userId = subscription.metadata?.user_id || null;
+      const customerId =
+        typeof subscription.customer === "string"
+          ? subscription.customer
+          : null;
+
+      const firstItem = subscription.items.data[0];
+      const priceId = firstItem?.price?.id || null;
+
+      const plan =
+        subscription.metadata?.plan || mapPriceIdToPlan(priceId) || "starter";
+
+      if (userId) {
+        await supabaseAdmin
+          .from("profiles")
+          .update({
+            plan,
+            stripe_customer_id: customerId,
+            subscription_id: subscription.id,
+            subscription_status: subscription.status,
+          })
+          .eq("id", userId);
       }
+    }
 
-      case "customer.subscription.deleted": {
-        const subscription = event.data.object as Stripe.Subscription;
-        const userId = subscription.metadata?.user_id || null;
+    if (event.type === "customer.subscription.deleted") {
+      const subscription = event.data.object as Stripe.Subscription;
 
-        if (userId) {
-          await supabaseAdmin
-            .from("profiles")
-            .update({
-              plan: "starter",
-              subscription_status: subscription.status,
-              subscription_id: subscription.id,
-            })
-            .eq("id", userId);
-        }
-        break;
+      const userId = subscription.metadata?.user_id || null;
+
+      if (userId) {
+        await supabaseAdmin
+          .from("profiles")
+          .update({
+            plan: "starter",
+            subscription_id: subscription.id,
+            subscription_status: subscription.status,
+          })
+          .eq("id", userId);
       }
-
-      default:
-        break;
     }
 
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error("STRIPE_WEBHOOK_ERROR", error);
+
     return NextResponse.json(
       { error: "Webhook error" },
       { status: 400 }
