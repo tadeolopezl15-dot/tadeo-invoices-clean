@@ -4,7 +4,7 @@ import { useState } from "react";
 
 export default function SendInvoiceEmailButton({
   invoiceId,
-  label = "Email",
+  label = "Enviar email",
   successLabel = "Email enviado",
   errorLabel = "No se pudo enviar",
 }: {
@@ -15,11 +15,13 @@ export default function SendInvoiceEmailButton({
 }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [isError, setIsError] = useState(false);
 
   async function handleSend() {
     try {
       setLoading(true);
       setMessage("");
+      setIsError(false);
 
       const res = await fetch(`/api/invoices/${invoiceId}/send`, {
         method: "POST",
@@ -32,9 +34,11 @@ export default function SendInvoiceEmailButton({
       }
 
       setMessage(successLabel);
+      setIsError(false);
     } catch (error) {
       const text = error instanceof Error ? error.message : errorLabel;
       setMessage(text);
+      setIsError(true);
     } finally {
       setLoading(false);
     }
@@ -46,12 +50,16 @@ export default function SendInvoiceEmailButton({
         type="button"
         onClick={handleSend}
         disabled={loading}
-        className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="ui-btn ui-btn-secondary"
       >
-        {loading ? "Enviando..." : label}
+        {loading ? "..." : label}
       </button>
 
-      {message ? <p className="text-xs text-slate-500">{message}</p> : null}
+      {message ? (
+        <p className={`text-xs ${isError ? "text-rose-600" : "text-emerald-600"}`}>
+          {message}
+        </p>
+      ) : null}
     </div>
   );
 }

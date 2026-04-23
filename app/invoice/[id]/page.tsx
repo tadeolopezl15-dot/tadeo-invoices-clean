@@ -8,18 +8,22 @@ type Props = {
   params: Promise<{ id: string }>;
 };
 
+function getStatusClass(status: string | null) {
+  const value = (status || "").toLowerCase();
+  if (value === "paid") return "ui-pill-status ui-status-paid";
+  if (value === "canceled") return "ui-pill-status ui-status-canceled";
+  return "ui-pill-status ui-status-pending";
+}
+
 export default async function InvoiceDetailPage({ params }: Props) {
   const { id } = await params;
 
   const supabase = await createServerClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
   const { data: invoice, error } = await supabase
     .from("invoices")
@@ -28,9 +32,7 @@ export default async function InvoiceDetailPage({ params }: Props) {
     .eq("user_id", user.id)
     .single();
 
-  if (error || !invoice) {
-    notFound();
-  }
+  if (error || !invoice) notFound();
 
   const { data: items } = await supabase
     .from("invoice_items")
@@ -38,166 +40,128 @@ export default async function InvoiceDetailPage({ params }: Props) {
     .eq("invoice_id", invoice.id);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      {/* HEADER */}
-      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            Factura #{invoice.invoice_number}
-          </h1>
+    <main className="ui-page">
+      <div className="ui-shell">
+        <div className="ui-card-soft ui-section">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 md:text-4xl">
+                Factura #{invoice.invoice_number}
+              </h1>
+              <p className="mt-2 text-base text-slate-500">
+                {invoice.client_name} · {invoice.client_email}
+              </p>
+            </div>
 
-          <p className="text-sm text-slate-500">
-            {invoice.client_name} · {invoice.client_email}
-          </p>
+            <span className={getStatusClass(invoice.status)}>
+              {invoice.status || "pending"}
+            </span>
+          </div>
+
+          <div className="ui-actions mt-6">
+            <Link href={`/invoice/${invoice.id}/edit`} className="ui-btn ui-btn-secondary">
+              Editar
+            </Link>
+
+            <Link href={`/api/invoices/${invoice.id}/pdf`} className="ui-btn ui-btn-secondary">
+              PDF
+            </Link>
+
+            <SendInvoiceEmailButton
+              invoiceId={invoice.id}
+              label="Enviar email"
+              successLabel="Email enviado"
+              errorLabel="Error al enviar"
+            />
+
+            <DeleteInvoiceButton invoiceId={invoice.id} label="Eliminar" />
+
+            <Link href={`/api/invoices/${invoice.id}/pay`} className="ui-btn ui-btn-primary">
+              Pagar
+            </Link>
+
+            {invoice.public_token ? (
+              <Link
+                href={`/public-invoice/${invoice.public_token}`}
+                className="ui-btn ui-btn-secondary"
+              >
+                Ver
+              </Link>
+            ) : null}
+          </div>
         </div>
 
-        <span className="rounded-xl bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-          {invoice.status}
-        </span>
-      </div>
+        <div className="ui-grid-2 mt-6">
+          <div className="ui-panel">
+            <h2 className="text-lg font-bold text-slate-900">Detalles</h2>
+            <div className="mt-4 space-y-2 text-sm text-slate-700">
+              <p>
+                <strong>Fecha de emisión:</strong>{" "}
+                {invoice.issue_date ? new Date(invoice.issue_date).toLocaleDateString() : "-"}
+              </p>
+              <p>
+                <strong>Fecha de vencimiento:</strong>{" "}
+                {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : "-"}
+              </p>
+            </div>
+          </div>
 
-      {/* BOTONES PREMIUM */}
-      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-        {/* EDITAR */}
-        <Link
-          href={`/invoice/${invoice.id}/edit`}
-          className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-        >
-          Editar
-        </Link>
-
-        {/* PDF */}
-        <Link
-          href={`/api/invoices/${invoice.id}/pdf`}
-          className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-        >
-          PDF
-        </Link>
-
-        {/* EMAIL */}
-        <SendInvoiceEmailButton
-          invoiceId={invoice.id}
-          label="Enviar email"
-          successLabel="Email enviado"
-          errorLabel="Error al enviar"
-        />
-
-        {/* ELIMINAR */}
-        <DeleteInvoiceButton
-          invoiceId={invoice.id}
-          label="Eliminar"
-        />
-
-        {/* PAGAR (FIX CUADRO NEGRO) */}
-        <Link
-          href={`/api/invoices/${invoice.id}/pay`}
-          className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-        >
-          Pagar
-        </Link>
-
-        {/* VISTA PUBLICA */}
-        {invoice.public_token && (
-          <Link
-            href={`/public-invoice/${invoice.public_token}`}
-            className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-          >
-            Ver
-          </Link>
-        )}
-      </div>
-
-      {/* DETALLES */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 p-5">
-          <h2 className="mb-3 text-sm font-semibold text-slate-600">
-            Detalles
-          </h2>
-
-          <p className="text-sm">
-            <strong>Fecha:</strong>{" "}
-            {new Date(invoice.issue_date).toLocaleDateString()}
-          </p>
-
-          {invoice.due_date && (
-            <p className="text-sm">
-              <strong>Vencimiento:</strong>{" "}
-              {new Date(invoice.due_date).toLocaleDateString()}
-            </p>
-          )}
+          <div className="ui-panel">
+            <h2 className="text-lg font-bold text-slate-900">Cliente</h2>
+            <div className="mt-4">
+              <p className="text-base font-semibold text-slate-900">{invoice.client_name}</p>
+              <p className="mt-1 text-sm text-slate-500">{invoice.client_email}</p>
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 p-5">
-          <h2 className="mb-3 text-sm font-semibold text-slate-600">
-            Cliente
-          </h2>
-
-          <p className="text-sm">{invoice.client_name}</p>
-          <p className="text-sm text-slate-500">
-            {invoice.client_email}
-          </p>
-        </div>
-      </div>
-
-      {/* ITEMS */}
-      <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-100 text-left text-xs uppercase text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Descripción</th>
-              <th className="px-4 py-3">Cant.</th>
-              <th className="px-4 py-3">Precio</th>
-              <th className="px-4 py-3 text-right">Total</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {items?.map((item) => (
-              <tr key={item.id} className="border-t">
-                <td className="px-4 py-3">{item.description}</td>
-                <td className="px-4 py-3">{item.quantity}</td>
-                <td className="px-4 py-3">${item.unit_price}</td>
-                <td className="px-4 py-3 text-right">
-                  ${item.total}
-                </td>
+        <div className="ui-table-wrap mt-6">
+          <table className="ui-table">
+            <thead>
+              <tr>
+                <th>Descripción</th>
+                <th>Cant.</th>
+                <th>Precio</th>
+                <th style={{ textAlign: "right" }}>Total</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {items?.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.description}</td>
+                  <td>{item.quantity}</td>
+                  <td>${item.unit_price}</td>
+                  <td style={{ textAlign: "right", fontWeight: 700 }}>${item.total}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-      {/* TOTALES */}
-      <div className="mt-6 flex justify-end">
-        <div className="w-full max-w-sm space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span>Subtotal</span>
-            <span>${invoice.subtotal}</span>
+        <div className="mt-6 ml-auto w-full max-w-md space-y-3">
+          <div className="ui-kv">
+            <span className="ui-muted">Subtotal</span>
+            <span className="font-semibold text-slate-950">${invoice.subtotal}</span>
           </div>
-
-          <div className="flex justify-between">
-            <span>Impuestos</span>
-            <span>${invoice.tax}</span>
+          <div className="ui-kv">
+            <span className="ui-muted">Impuestos</span>
+            <span className="font-semibold text-slate-950">${invoice.tax}</span>
           </div>
-
-          <div className="flex justify-between text-lg font-semibold">
-            <span>Total</span>
-            <span>${invoice.total}</span>
+          <div className="ui-kv" style={{ background: "#0f172a", borderColor: "#0f172a" }}>
+            <span style={{ color: "white", fontWeight: 600 }}>Total</span>
+            <span style={{ color: "white", fontWeight: 800, fontSize: 22 }}>${invoice.total}</span>
           </div>
         </div>
+
+        {invoice.notes ? (
+          <div className="ui-panel mt-6">
+            <h2 className="text-lg font-bold text-slate-900">Notas</h2>
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-600">
+              {invoice.notes}
+            </p>
+          </div>
+        ) : null}
       </div>
-
-      {/* NOTAS */}
-      {invoice.notes && (
-        <div className="mt-8 rounded-2xl border border-slate-200 p-5">
-          <h2 className="mb-2 text-sm font-semibold text-slate-600">
-            Notas
-          </h2>
-
-          <p className="text-sm text-slate-700">
-            {invoice.notes}
-          </p>
-        </div>
-      )}
-    </div>
+    </main>
   );
 }

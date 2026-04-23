@@ -10,14 +10,14 @@ export default function AppHeader() {
   const { t } = useLanguage();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 md:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 md:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-sm font-bold text-white shadow-sm">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-sm font-bold text-white shadow-sm">
             TI
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900 md:text-base">
+          <div>
+            <p className="text-sm font-semibold text-slate-950 md:text-base">
               Tadeo Invoices
             </p>
             <p className="hidden text-xs text-slate-500 sm:block">
@@ -26,39 +26,26 @@ export default function AppHeader() {
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-3 md:flex">
-          <Link
-            href="/dashboard"
-            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
-          >
-            {t.common.dashboard}
+        <nav className="hidden items-center gap-2 md:flex">
+          <Link href="/" className="ui-btn ui-btn-ghost">
+            Home
           </Link>
-          <Link
-            href="/invoice"
-            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
-          >
-            {t.common.invoices}
+          <Link href="/pricing" className="ui-btn ui-btn-ghost">
+            Pricing
           </Link>
-          <Link
-            href="/clientes"
-            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
-          >
-            {t.common.clients}
+          <Link href="/login" className="ui-btn ui-btn-secondary">
+            {t.common.login}
           </Link>
-          <Link
-            href="/configuracion"
-            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
-          >
-            {t.common.settings}
+          <Link href="/signup" className="ui-btn ui-btn-primary">
+            Get started
           </Link>
-
           <LanguageSwitcher />
         </nav>
 
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 md:hidden"
+          className="ui-btn ui-btn-secondary md:hidden"
         >
           Menu
         </button>
@@ -66,39 +53,20 @@ export default function AppHeader() {
 
       {open ? (
         <div className="border-t border-slate-200 bg-white md:hidden">
-          <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-4 py-4">
-            <Link
-              href="/dashboard"
-              onClick={() => setOpen(false)}
-              className="rounded-xl px-3 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-            >
-              {t.common.dashboard}
+          <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4">
+            <Link href="/" className="ui-btn ui-btn-ghost" onClick={() => setOpen(false)}>
+              Home
             </Link>
-            <Link
-              href="/invoice"
-              onClick={() => setOpen(false)}
-              className="rounded-xl px-3 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-            >
-              {t.common.invoices}
+            <Link href="/pricing" className="ui-btn ui-btn-ghost" onClick={() => setOpen(false)}>
+              Pricing
             </Link>
-            <Link
-              href="/clientes"
-              onClick={() => setOpen(false)}
-              className="rounded-xl px-3 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-            >
-              {t.common.clients}
+            <Link href="/login" className="ui-btn ui-btn-secondary" onClick={() => setOpen(false)}>
+              {t.common.login}
             </Link>
-            <Link
-              href="/configuracion"
-              onClick={() => setOpen(false)}
-              className="rounded-xl px-3 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-            >
-              {t.common.settings}
+            <Link href="/signup" className="ui-btn ui-btn-primary" onClick={() => setOpen(false)}>
+              Get started
             </Link>
-
-            <div className="pt-1">
-              <LanguageSwitcher />
-            </div>
+            <LanguageSwitcher />
           </div>
         </div>
       ) : null}
