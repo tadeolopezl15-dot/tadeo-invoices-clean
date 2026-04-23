@@ -3,13 +3,10 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@/lib/supabase/client";
-import { useLang } from "@/components/LanguageProvider";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { t } = useLang();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,7 +17,7 @@ export default function LoginScreen() {
     setLoading(true);
     setError("");
 
-    const supabase = createBrowserClient();
+    const supabase = createClient();
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -38,74 +35,64 @@ export default function LoginScreen() {
   }
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold tracking-tight text-slate-950">
-        {t.common.login}
-      </h2>
+    <div className="ui-page">
+      <div className="ui-shell flex min-h-screen items-center justify-center">
+        <div className="ui-card w-full max-w-xl p-8">
+          <h2 className="text-3xl font-bold tracking-tight text-slate-950">
+            Iniciar sesión
+          </h2>
 
-      <p className="mt-2 text-sm leading-7 text-slate-600">
-        {t.common.login} · Tadeo Invoices
-      </p>
+          <p className="mt-3 text-base leading-7 text-slate-600">
+            Accede a tu cuenta de Tadeo Invoices.
+          </p>
 
-      {error ? (
-        <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {error}
+          {error ? (
+            <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {error}
+            </div>
+          ) : null}
+
+          <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+            <div>
+              <label className="ui-label">Correo</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="correo@email.com"
+                className="ui-input"
+              />
+            </div>
+
+            <div>
+              <label className="ui-label">Contraseña</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="ui-input"
+              />
+            </div>
+
+            <button type="submit" disabled={loading} className="btn btn-primary w-full">
+              {loading ? "Cargando..." : "Iniciar sesión"}
+            </button>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+              <Link href="/fargot-password" className="text-sm font-medium text-blue-700">
+                ¿Olvidaste tu contraseña?
+              </Link>
+
+              <Link href="/signup" className="text-sm font-medium text-slate-700">
+                Crear cuenta
+              </Link>
+            </div>
+          </form>
         </div>
-      ) : null}
-
-      <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            {t.common.email}
-          </label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="correo@email.com"
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white"
-          />
-        </div>
-
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            Password
-          </label>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading ? t.common.loading : t.common.login}
-        </button>
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-          <Link
-            href="/forgot-password"
-            className="text-sm font-medium text-blue-700 hover:text-blue-800"
-          >
-            {t.common.forgotPassword}
-          </Link>
-
-          <Link
-            href="/signup"
-            className="text-sm font-medium text-slate-700 hover:text-slate-950"
-          >
-            {t.common.signup}
-          </Link>
-        </div>
-      </form>
+      </div>
     </div>
   );
 }

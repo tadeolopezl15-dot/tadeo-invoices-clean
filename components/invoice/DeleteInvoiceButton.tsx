@@ -42,7 +42,7 @@ export default function DeleteInvoiceButton({
       type="button"
       onClick={handleDelete}
       disabled={loading}
-      className="ui-btn ui-btn-danger"
+      className="btn btn-danger"
     >
       {loading ? "Eliminando..." : label}
     </button>

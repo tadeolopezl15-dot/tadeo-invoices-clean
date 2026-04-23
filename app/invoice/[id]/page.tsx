@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
+import AppHeader from "@/components/AppHeader";
 import DeleteInvoiceButton from "@/components/invoice/DeleteInvoiceButton";
 import SendInvoiceEmailButton from "@/components/invoice/SendInvoiceEmailButton";
 
@@ -10,15 +11,15 @@ type Props = {
 
 function getStatusClass(status: string | null) {
   const value = (status || "").toLowerCase();
-  if (value === "paid") return "ui-pill-status ui-status-paid";
-  if (value === "canceled") return "ui-pill-status ui-status-canceled";
-  return "ui-pill-status ui-status-pending";
+  if (value === "paid") return "ui-pill ui-pill-paid";
+  if (value === "canceled") return "ui-pill ui-pill-canceled";
+  return "ui-pill ui-pill-pending";
 }
 
 export default async function InvoiceDetailPage({ params }: Props) {
   const { id } = await params;
-
   const supabase = await createServerClient();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -41,8 +42,10 @@ export default async function InvoiceDetailPage({ params }: Props) {
 
   return (
     <main className="ui-page">
+      <AppHeader />
+
       <div className="ui-shell">
-        <div className="ui-card-soft ui-section">
+        <div className="ui-card p-6 md:p-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 md:text-4xl">
@@ -59,11 +62,11 @@ export default async function InvoiceDetailPage({ params }: Props) {
           </div>
 
           <div className="ui-actions mt-6">
-            <Link href={`/invoice/${invoice.id}/edit`} className="ui-btn ui-btn-secondary">
+            <Link href={`/invoice/${invoice.id}/edit`} className="btn btn-secondary">
               Editar
             </Link>
 
-            <Link href={`/api/invoices/${invoice.id}/pdf`} className="ui-btn ui-btn-secondary">
+            <Link href={`/api/invoices/${invoice.id}/pdf`} className="btn btn-secondary">
               PDF
             </Link>
 
@@ -71,19 +74,19 @@ export default async function InvoiceDetailPage({ params }: Props) {
               invoiceId={invoice.id}
               label="Enviar email"
               successLabel="Email enviado"
-              errorLabel="Error al enviar"
+              errorLabel="No se pudo enviar"
             />
 
             <DeleteInvoiceButton invoiceId={invoice.id} label="Eliminar" />
 
-            <Link href={`/api/invoices/${invoice.id}/pay`} className="ui-btn ui-btn-primary">
+            <Link href={`/api/invoices/${invoice.id}/pay`} className="btn btn-primary">
               Pagar
             </Link>
 
             {invoice.public_token ? (
               <Link
                 href={`/public-invoice/${invoice.public_token}`}
-                className="ui-btn ui-btn-secondary"
+                className="btn btn-secondary"
               >
                 Ver
               </Link>
@@ -91,7 +94,7 @@ export default async function InvoiceDetailPage({ params }: Props) {
           </div>
         </div>
 
-        <div className="ui-grid-2 mt-6">
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="ui-panel">
             <h2 className="text-lg font-bold text-slate-900">Detalles</h2>
             <div className="mt-4 space-y-2 text-sm text-slate-700">
@@ -131,7 +134,9 @@ export default async function InvoiceDetailPage({ params }: Props) {
                   <td>{item.description}</td>
                   <td>{item.quantity}</td>
                   <td>${item.unit_price}</td>
-                  <td style={{ textAlign: "right", fontWeight: 700 }}>${item.total}</td>
+                  <td style={{ textAlign: "right", fontWeight: 700 }}>
+                    ${item.total}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -140,16 +145,21 @@ export default async function InvoiceDetailPage({ params }: Props) {
 
         <div className="mt-6 ml-auto w-full max-w-md space-y-3">
           <div className="ui-kv">
-            <span className="ui-muted">Subtotal</span>
+            <span className="text-slate-500">Subtotal</span>
             <span className="font-semibold text-slate-950">${invoice.subtotal}</span>
           </div>
           <div className="ui-kv">
-            <span className="ui-muted">Impuestos</span>
+            <span className="text-slate-500">Impuestos</span>
             <span className="font-semibold text-slate-950">${invoice.tax}</span>
           </div>
-          <div className="ui-kv" style={{ background: "#0f172a", borderColor: "#0f172a" }}>
+          <div
+            className="ui-kv"
+            style={{ background: "#0f172a", borderColor: "#0f172a" }}
+          >
             <span style={{ color: "white", fontWeight: 600 }}>Total</span>
-            <span style={{ color: "white", fontWeight: 800, fontSize: 22 }}>${invoice.total}</span>
+            <span style={{ color: "white", fontWeight: 800, fontSize: 22 }}>
+              ${invoice.total}
+            </span>
           </div>
         </div>
 

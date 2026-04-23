@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@/lib/supabase/client";
-import { useLang } from "@/components/LanguageProvider";
+import { createClient } from "@/lib/supabase/client";
 
 export default function SignupScreen() {
   const router = useRouter();
-  const { t, lang } = useLang();
 
   const [fullName, setFullName] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -24,7 +22,7 @@ export default function SignupScreen() {
     setError("");
     setSuccess("");
 
-    const supabase = createBrowserClient();
+    const supabase = createClient();
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -57,108 +55,92 @@ export default function SignupScreen() {
       );
     }
 
-    setSuccess(
-      lang === "es"
-        ? "Cuenta creada. Revisa tu correo para confirmar el acceso."
-        : "Account created. Check your email to confirm access."
-    );
-
+    setSuccess("Cuenta creada. Revisa tu correo para confirmar el acceso.");
     setLoading(false);
     router.refresh();
   }
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold tracking-tight text-slate-950">
-        {t.common.signup}
-      </h2>
+    <div className="ui-page">
+      <div className="ui-shell flex min-h-screen items-center justify-center">
+        <div className="ui-card w-full max-w-xl p-8">
+          <h2 className="text-3xl font-bold tracking-tight text-slate-950">
+            Crear cuenta
+          </h2>
 
-      <p className="mt-2 text-sm leading-7 text-slate-600">
-        Tadeo Invoices
-      </p>
+          <p className="mt-3 text-base leading-7 text-slate-600">
+            Empieza con una experiencia premium de facturación.
+          </p>
 
-      {success ? (
-        <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          {success}
+          {success ? (
+            <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              {success}
+            </div>
+          ) : null}
+
+          {error ? (
+            <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {error}
+            </div>
+          ) : null}
+
+          <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+            <div>
+              <label className="ui-label">Nombre</label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Tu nombre"
+                className="ui-input"
+              />
+            </div>
+
+            <div>
+              <label className="ui-label">Empresa</label>
+              <input
+                type="text"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Tu empresa"
+                className="ui-input"
+              />
+            </div>
+
+            <div>
+              <label className="ui-label">Correo</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="correo@email.com"
+                className="ui-input"
+              />
+            </div>
+
+            <div>
+              <label className="ui-label">Contraseña</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="ui-input"
+              />
+            </div>
+
+            <button type="submit" disabled={loading} className="btn btn-primary w-full">
+              {loading ? "Cargando..." : "Crear cuenta"}
+            </button>
+
+            <Link href="/login" className="btn btn-secondary w-full">
+              Iniciar sesión
+            </Link>
+          </form>
         </div>
-      ) : null}
-
-      {error ? (
-        <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {error}
-        </div>
-      ) : null}
-
-      <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            Full name
-          </label>
-          <input
-            type="text"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            placeholder={lang === "es" ? "Tu nombre" : "Your name"}
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white"
-          />
-        </div>
-
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            Company
-          </label>
-          <input
-            type="text"
-            value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
-            placeholder={lang === "es" ? "Tu empresa" : "Your company"}
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white"
-          />
-        </div>
-
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            {t.common.email}
-          </label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="correo@email.com"
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white"
-          />
-        </div>
-
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            Password
-          </label>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading ? t.common.loading : t.common.signup}
-        </button>
-
-        <Link
-          href="/login"
-          className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-        >
-          {t.common.login}
-        </Link>
-      </form>
+      </div>
     </div>
   );
 }

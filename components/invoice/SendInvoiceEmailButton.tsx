@@ -50,7 +50,7 @@ export default function SendInvoiceEmailButton({
         type="button"
         onClick={handleSend}
         disabled={loading}
-        className="ui-btn ui-btn-secondary"
+        className="btn btn-secondary"
       >
         {loading ? "..." : label}
       </button>

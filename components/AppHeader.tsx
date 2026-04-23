@@ -3,17 +3,15 @@
 import Link from "next/link";
 import { useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { useLanguage } from "@/components/LanguageProvider";
 
 export default function AppHeader() {
   const [open, setOpen] = useState(false);
-  const { t } = useLanguage();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 md:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-sm font-bold text-white shadow-sm">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-sm font-bold text-white">
             TI
           </div>
           <div>
@@ -27,16 +25,16 @@ export default function AppHeader() {
         </Link>
 
         <nav className="hidden items-center gap-2 md:flex">
-          <Link href="/" className="ui-btn ui-btn-ghost">
+          <Link href="/" className="btn btn-ghost">
             Home
           </Link>
-          <Link href="/pricing" className="ui-btn ui-btn-ghost">
+          <Link href="/pricing" className="btn btn-ghost">
             Pricing
           </Link>
-          <Link href="/login" className="ui-btn ui-btn-secondary">
-            {t.common.login}
+          <Link href="/login" className="btn btn-secondary">
+            Login
           </Link>
-          <Link href="/signup" className="ui-btn ui-btn-primary">
+          <Link href="/signup" className="btn btn-primary">
             Get started
           </Link>
           <LanguageSwitcher />
@@ -45,7 +43,7 @@ export default function AppHeader() {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="ui-btn ui-btn-secondary md:hidden"
+          className="btn btn-secondary md:hidden"
         >
           Menu
         </button>
@@ -54,16 +52,16 @@ export default function AppHeader() {
       {open ? (
         <div className="border-t border-slate-200 bg-white md:hidden">
           <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4">
-            <Link href="/" className="ui-btn ui-btn-ghost" onClick={() => setOpen(false)}>
+            <Link href="/" className="btn btn-ghost" onClick={() => setOpen(false)}>
               Home
             </Link>
-            <Link href="/pricing" className="ui-btn ui-btn-ghost" onClick={() => setOpen(false)}>
+            <Link href="/pricing" className="btn btn-ghost" onClick={() => setOpen(false)}>
               Pricing
             </Link>
-            <Link href="/login" className="ui-btn ui-btn-secondary" onClick={() => setOpen(false)}>
-              {t.common.login}
+            <Link href="/login" className="btn btn-secondary" onClick={() => setOpen(false)}>
+              Login
             </Link>
-            <Link href="/signup" className="ui-btn ui-btn-primary" onClick={() => setOpen(false)}>
+            <Link href="/signup" className="btn btn-primary" onClick={() => setOpen(false)}>
               Get started
             </Link>
             <LanguageSwitcher />

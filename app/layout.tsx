@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "@/styles/buttons.css";
 import "@/styles/ui-premium.css";
 import { LanguageProvider } from "@/components/LanguageProvider";
 
