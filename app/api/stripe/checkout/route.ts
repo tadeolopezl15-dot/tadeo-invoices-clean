@@ -1,45 +1,97 @@
-import { NextRequest, NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { NextResponse } from "next/server";
+import { createServerClient } from "@/lib/supabase/server";
+import { getStripe } from "@/lib/stripe";
 
-const PRICE_MAP = {
-  starter: process.env.STRIPE_PRICE_ID_STARTER!,
-  pro: process.env.STRIPE_PRICE_ID_PRO!,
-  business: process.env.STRIPE_PRICE_ID_BUSINESS!,
+const PRICE_MAP: Record<string, string | undefined> = {
+  starter: process.env.STRIPE_PRICE_ID_STARTER,
+  pro: process.env.STRIPE_PRICE_ID_PRO,
+  business: process.env.STRIPE_PRICE_ID_BUSINESS,
 };
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
+    const supabase = await createServerClient();
+    const stripe = getStripe();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const body = await req.json();
-    const plan = body?.plan as "starter" | "pro" | "business";
-    const userId = body?.userId as string;
+    const plan = String(body?.plan || "pro").toLowerCase();
 
-    if (!plan || !PRICE_MAP[plan]) {
-      return NextResponse.json({ error: "Plan inválido." }, { status: 400 });
+    if (!["starter", "pro", "business"].includes(plan)) {
+      return NextResponse.json({ error: "Plan inválido" }, { status: 400 });
     }
 
-    if (!userId) {
-      return NextResponse.json({ error: "Falta userId." }, { status: 400 });
+    const priceId = PRICE_MAP[plan];
+
+    if (!priceId) {
+      return NextResponse.json(
+        { error: `Falta el Price ID para ${plan}` },
+        { status: 500 }
+      );
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("stripe_customer_id, company_name")
+      .eq("id", user.id)
+      .single();
+
+    let customerId = profile?.stripe_customer_id || null;
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email || undefined,
+        name:
+          profile?.company_name ||
+          user.user_metadata?.full_name ||
+          user.email ||
+          undefined,
+        metadata: {
+          user_id: user.id,
+        },
+      });
+
+      customerId = customer.id;
+
+      await supabase
+        .from("profiles")
+        .update({
+          stripe_customer_id: customerId,
+        })
+        .eq("id", user.id);
+    }
+
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      "https://tadeo-invoices-clean-pdw3.vercel.app";
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
+      customer: customerId,
       line_items: [
         {
-          price: PRICE_MAP[plan],
+          price: priceId,
           quantity: 1,
         },
       ],
-      success_url: `${baseUrl}/membresias/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/membresias/cancel`,
+      success_url: `${siteUrl}/membresias/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${siteUrl}/membresias/cancel`,
+      allow_promotion_codes: true,
       metadata: {
-        userId,
+        user_id: user.id,
         plan,
       },
       subscription_data: {
         metadata: {
-          userId,
+          user_id: user.id,
           plan,
         },
       },
@@ -47,9 +99,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error("STRIPE_CHECKOUT_ERROR", error);
+    console.error("CHECKOUT_ERROR", error);
     return NextResponse.json(
-      { error: "No se pudo crear la sesión de pago." },
+      { error: "No se pudo crear el checkout" },
       { status: 500 }
     );
   }
