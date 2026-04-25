@@ -1,362 +1,215 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { createServerClient } from "@/lib/supabase/server";
 
-type Params = Promise<{ id: string }>;
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-async function fetchImageBytes(url: string) {
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  const arrayBuffer = await res.arrayBuffer();
-  return Buffer.from(arrayBuffer);
+function money(value: number, currency = "USD") {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+  }).format(value || 0);
 }
 
 export async function GET(
-  _req: Request,
-  context: { params: Params }
+  req: Request,
+  context: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await context.params;
-    const supabase = await createServerClient();
+  const { id } = await context.params;
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+  const { data: invoice } = await supabaseAdmin
+    .from("invoices")
+    .select("*, invoice_items(*)")
+    .eq("id", id)
+    .single();
 
-    if (userError || !user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
-    const { data: invoice, error: invoiceError } = await supabase
-      .from("invoices")
-      .select(
-        "id, invoice_number, client_name, client_email, status, total, subtotal, tax, currency, issue_date, due_date, notes"
-      )
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .single();
-
-    if (invoiceError || !invoice) {
-      return NextResponse.json({ error: "Factura no encontrada" }, { status: 404 });
-    }
-
-    const { data: items } = await supabase
-      .from("invoice_items")
-      .select("description, quantity, unit_price, total")
-      .eq("invoice_id", invoice.id)
-      .order("id", { ascending: true });
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("company_name, company_email, company_phone, company_address, logo_url")
-      .eq("id", user.id)
-      .single();
-
-    const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([595, 842]);
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-    const pageWidth = page.getWidth();
-    const pageHeight = page.getHeight();
-
-    let y = pageHeight - 60;
-
-    if (profile?.logo_url) {
-      try {
-        const imageBytes = await fetchImageBytes(profile.logo_url);
-
-        if (imageBytes) {
-          let embeddedImage;
-          const lower = profile.logo_url.toLowerCase();
-
-          if (lower.includes(".png") || lower.includes("image/png")) {
-            embeddedImage = await pdfDoc.embedPng(imageBytes);
-          } else {
-            embeddedImage = await pdfDoc.embedJpg(imageBytes);
-          }
-
-          const dims = embeddedImage.scale(1);
-          const maxWidth = 120;
-          const maxHeight = 70;
-          const scale = Math.min(maxWidth / dims.width, maxHeight / dims.height, 1);
-
-          page.drawImage(embeddedImage, {
-            x: 50,
-            y: y - dims.height * scale + 10,
-            width: dims.width * scale,
-            height: dims.height * scale,
-          });
-        }
-      } catch (e) {
-        console.error("PDF_LOGO_EMBED_ERROR", e);
-      }
-    }
-
-    page.drawText(profile?.company_name || "Tadeo Invoices", {
-      x: 190,
-      y,
-      size: 20,
-      font: fontBold,
-      color: rgb(0.1, 0.1, 0.12),
-    });
-
-    y -= 24;
-
-    if (profile?.company_email) {
-      page.drawText(profile.company_email, {
-        x: 190,
-        y,
-        size: 10,
-        font,
-        color: rgb(0.35, 0.35, 0.4),
-      });
-      y -= 14;
-    }
-
-    if (profile?.company_phone) {
-      page.drawText(profile.company_phone, {
-        x: 190,
-        y,
-        size: 10,
-        font,
-        color: rgb(0.35, 0.35, 0.4),
-      });
-      y -= 14;
-    }
-
-    if (profile?.company_address) {
-      page.drawText(profile.company_address, {
-        x: 190,
-        y,
-        size: 10,
-        font,
-        color: rgb(0.35, 0.35, 0.4),
-      });
-    }
-
-    page.drawText(`Invoice ${invoice.invoice_number || ""}`, {
-      x: 390,
-      y: pageHeight - 60,
-      size: 18,
-      font: fontBold,
-      color: rgb(0.1, 0.1, 0.12),
-    });
-
-    page.drawText(`Client: ${invoice.client_name || "-"}`, {
-      x: 390,
-      y: pageHeight - 86,
-      size: 10,
-      font,
-      color: rgb(0.35, 0.35, 0.4),
-    });
-
-    page.drawText(`Email: ${invoice.client_email || "-"}`, {
-      x: 390,
-      y: pageHeight - 100,
-      size: 10,
-      font,
-      color: rgb(0.35, 0.35, 0.4),
-    });
-
-    page.drawText(
-      `Issue: ${
-        invoice.issue_date ? new Date(invoice.issue_date).toLocaleDateString() : "-"
-      }`,
-      {
-        x: 390,
-        y: pageHeight - 114,
-        size: 10,
-        font,
-        color: rgb(0.35, 0.35, 0.4),
-      }
-    );
-
-    page.drawLine({
-      start: { x: 50, y: 680 },
-      end: { x: 545, y: 680 },
-      thickness: 1,
-      color: rgb(0.88, 0.88, 0.9),
-    });
-
-    let tableY = 655;
-
-    page.drawText("Description", {
-      x: 50,
-      y: tableY,
-      size: 11,
-      font: fontBold,
-      color: rgb(0.25, 0.25, 0.3),
-    });
-    page.drawText("Qty", {
-      x: 330,
-      y: tableY,
-      size: 11,
-      font: fontBold,
-      color: rgb(0.25, 0.25, 0.3),
-    });
-    page.drawText("Unit Price", {
-      x: 390,
-      y: tableY,
-      size: 11,
-      font: fontBold,
-      color: rgb(0.25, 0.25, 0.3),
-    });
-    page.drawText("Total", {
-      x: 490,
-      y: tableY,
-      size: 11,
-      font: fontBold,
-      color: rgb(0.25, 0.25, 0.3),
-    });
-
-    tableY -= 20;
-
-    for (const item of items || []) {
-      page.drawText(String(item.description || "-"), {
-        x: 50,
-        y: tableY,
-        size: 10,
-        font,
-        color: rgb(0.1, 0.1, 0.12),
-        maxWidth: 260,
-      });
-
-      page.drawText(String(item.quantity || 0), {
-        x: 330,
-        y: tableY,
-        size: 10,
-        font,
-        color: rgb(0.1, 0.1, 0.12),
-      });
-
-      page.drawText(
-        new Intl.NumberFormat("en-US", {
-          style: "currency",
-          currency: invoice.currency || "USD",
-        }).format(Number(item.unit_price || 0)),
-        {
-          x: 390,
-          y: tableY,
-          size: 10,
-          font,
-          color: rgb(0.1, 0.1, 0.12),
-        }
-      );
-
-      page.drawText(
-        new Intl.NumberFormat("en-US", {
-          style: "currency",
-          currency: invoice.currency || "USD",
-        }).format(Number(item.total || 0)),
-        {
-          x: 490,
-          y: tableY,
-          size: 10,
-          font,
-          color: rgb(0.1, 0.1, 0.12),
-        }
-      );
-
-      tableY -= 18;
-    }
-
-    const totalsY = Math.max(tableY - 30, 140);
-
-    page.drawText("Subtotal:", {
-      x: 400,
-      y: totalsY,
-      size: 11,
-      font: fontBold,
-      color: rgb(0.25, 0.25, 0.3),
-    });
-    page.drawText(
-      new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: invoice.currency || "USD",
-      }).format(Number(invoice.subtotal || 0)),
-      {
-        x: 480,
-        y: totalsY,
-        size: 11,
-        font,
-        color: rgb(0.1, 0.1, 0.12),
-      }
-    );
-
-    page.drawText("Tax:", {
-      x: 400,
-      y: totalsY - 18,
-      size: 11,
-      font: fontBold,
-      color: rgb(0.25, 0.25, 0.3),
-    });
-    page.drawText(
-      new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: invoice.currency || "USD",
-      }).format(Number(invoice.tax || 0)),
-      {
-        x: 480,
-        y: totalsY - 18,
-        size: 11,
-        font,
-        color: rgb(0.1, 0.1, 0.12),
-      }
-    );
-
-    page.drawText("Total:", {
-      x: 400,
-      y: totalsY - 42,
-      size: 13,
-      font: fontBold,
-      color: rgb(0.1, 0.1, 0.12),
-    });
-    page.drawText(
-      new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: invoice.currency || "USD",
-      }).format(Number(invoice.total || 0)),
-      {
-        x: 480,
-        y: totalsY - 42,
-        size: 13,
-        font: fontBold,
-        color: rgb(0.1, 0.1, 0.12),
-      }
-    );
-
-    if (invoice.notes) {
-      page.drawText("Notes:", {
-        x: 50,
-        y: 110,
-        size: 11,
-        font: fontBold,
-        color: rgb(0.25, 0.25, 0.3),
-      });
-
-      page.drawText(String(invoice.notes).slice(0, 1800), {
-        x: 50,
-        y: 92,
-        size: 10,
-        font,
-        color: rgb(0.35, 0.35, 0.4),
-        maxWidth: 500,
-        lineHeight: 13,
-      });
-    }
-
-    const pdfBytes = await pdfDoc.save();
-
-    return new NextResponse(Buffer.from(pdfBytes), {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="invoice-${invoice.invoice_number || invoice.id}.pdf"`,
-      },
-    });
-  } catch (error) {
-    console.error("INVOICE_PDF_ERROR", error);
-    return NextResponse.json({ error: "No se pudo generar el PDF" }, { status: 500 });
+  if (!invoice) {
+    return NextResponse.json({ error: "Factura no encontrada" });
   }
+
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([600, 800]);
+
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  let y = 760;
+
+  // 🔷 HEADER
+  page.drawText("TADEO INVOICES", {
+    x: 50,
+    y,
+    size: 16,
+    font: bold,
+    color: rgb(0.1, 0.2, 0.4),
+  });
+
+  page.drawText(`Factura #${invoice.invoice_number}`, {
+    x: 380,
+    y,
+    size: 12,
+    font,
+  });
+
+  y -= 40;
+
+  page.drawLine({
+    start: { x: 50, y },
+    end: { x: 550, y },
+    thickness: 1,
+    color: rgb(0.85, 0.85, 0.9),
+  });
+
+  y -= 30;
+
+  // 🧾 INFO
+  page.drawText("DE:", { x: 50, y, size: 10, font: bold });
+  page.drawText(invoice.company_name || "-", {
+    x: 50,
+    y: y - 15,
+    size: 12,
+    font,
+  });
+
+  page.drawText(invoice.company_email || "", {
+    x: 50,
+    y: y - 30,
+    size: 10,
+    font,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+
+  page.drawText("PARA:", { x: 300, y, size: 10, font: bold });
+
+  page.drawText(invoice.client_name || "-", {
+    x: 300,
+    y: y - 15,
+    size: 12,
+    font,
+  });
+
+  page.drawText(invoice.client_email || "", {
+    x: 300,
+    y: y - 30,
+    size: 10,
+    font,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+
+  y -= 80;
+
+  // 📅 FECHAS
+  page.drawText(`Emisión: ${invoice.issue_date || "-"}`, {
+    x: 50,
+    y,
+    size: 10,
+    font,
+  });
+
+  page.drawText(`Vencimiento: ${invoice.due_date || "-"}`, {
+    x: 300,
+    y,
+    size: 10,
+    font,
+  });
+
+  y -= 40;
+
+  // 🔲 HEADER TABLA
+  page.drawRectangle({
+    x: 50,
+    y,
+    width: 500,
+    height: 25,
+    color: rgb(0.95, 0.97, 1),
+  });
+
+  page.drawText("Descripción", { x: 60, y: y + 8, size: 10, font: bold });
+  page.drawText("Cant.", { x: 260, y: y + 8, size: 10, font: bold });
+  page.drawText("Precio", { x: 320, y: y + 8, size: 10, font: bold });
+  page.drawText("Total", { x: 450, y: y + 8, size: 10, font: bold });
+
+  y -= 30;
+
+  // 📦 ITEMS
+  invoice.invoice_items?.forEach((item: any) => {
+    const qty = item.quantity || item.qty || 1;
+    const price = item.price || item.unit_price || 0;
+    const total = item.line_total || qty * price;
+
+    page.drawText(item.description || "-", { x: 60, y, size: 10, font });
+    page.drawText(String(qty), { x: 270, y, size: 10, font });
+    page.drawText(money(price), { x: 320, y, size: 10, font });
+    page.drawText(money(total), { x: 450, y, size: 10, font });
+
+    y -= 20;
+  });
+
+  y -= 20;
+
+  // 🔵 LINEA
+  page.drawLine({
+    start: { x: 300, y },
+    end: { x: 550, y },
+    thickness: 1,
+    color: rgb(0.85, 0.85, 0.9),
+  });
+
+  y -= 20;
+
+  // 💰 TOTALES
+  page.drawText("Subtotal:", { x: 350, y, size: 10, font });
+  page.drawText(money(invoice.subtotal || 0), {
+    x: 450,
+    y,
+    size: 10,
+    font,
+  });
+
+  y -= 15;
+
+  page.drawText("Impuestos:", { x: 350, y, size: 10, font });
+  page.drawText(money(invoice.tax_total || 0), {
+    x: 450,
+    y,
+    size: 10,
+    font,
+  });
+
+  y -= 20;
+
+  page.drawText("TOTAL", { x: 350, y, size: 12, font: bold });
+  page.drawText(money(invoice.total || 0), {
+    x: 450,
+    y,
+    size: 12,
+    font: bold,
+  });
+
+  y -= 40;
+
+  // 🧾 FOOTER
+  page.drawText("Gracias por tu negocio", {
+    x: 50,
+    y,
+    size: 10,
+    font,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+
+  // 🔥 FIX FINAL PARA VERCEL
+  const pdfBytes = await pdfDoc.save();
+  const pdfBuffer = Buffer.from(pdfBytes);
+
+  return new NextResponse(pdfBuffer, {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="invoice-${
+        invoice.invoice_number || invoice.id
+      }.pdf"`,
+    },
+  });
 }
