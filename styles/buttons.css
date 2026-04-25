@@ -10,13 +10,7 @@
   font-weight: 700;
   line-height: 1;
   text-decoration: none;
-  transition:
-    transform 0.18s ease,
-    background-color 0.18s ease,
-    border-color 0.18s ease,
-    color 0.18s ease,
-    box-shadow 0.18s ease,
-    opacity 0.18s ease;
+  transition: all 0.18s ease;
 }
 
 .btn:hover {
@@ -36,13 +30,9 @@
   box-shadow: 0 14px 34px rgba(37, 99, 235, 0.22);
 }
 
-.btn-primary:hover {
-  background: linear-gradient(135deg, #1d4ed8, #1e40af);
-}
-
 .btn-secondary {
   background: #ffffff;
-  color: #334155;
+  color: #0f172a;
   border: 1px solid #e2e8f0;
 }
 

@@ -8,19 +8,18 @@ export default function AppHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 md:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-sm font-bold text-white">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-sm font-bold text-white shadow-sm">
             TI
           </div>
+
           <div>
-            <p className="text-sm font-semibold text-slate-950 md:text-base">
+            <p className="text-sm font-bold text-slate-950 md:text-base">
               Tadeo Invoices
             </p>
-            <p className="hidden text-xs text-slate-500 sm:block">
-              Billing platform
-            </p>
+            <p className="text-xs text-slate-500">Billing platform</p>
           </div>
         </Link>
 
@@ -45,7 +44,7 @@ export default function AppHeader() {
           onClick={() => setOpen((v) => !v)}
           className="btn btn-secondary md:hidden"
         >
-          Menu
+          Menú
         </button>
       </div>
 
