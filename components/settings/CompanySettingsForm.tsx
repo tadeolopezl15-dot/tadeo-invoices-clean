@@ -25,9 +25,49 @@ export default function CompanySettingsForm({
     initialData.company_address
   );
   const [logoUrl, setLogoUrl] = useState(initialData.logo_url);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
+
+  async function uploadLogo() {
+    if (!logoFile) {
+      setMessage("Selecciona un logo primero.");
+      setIsError(true);
+      return;
+    }
+
+    try {
+      setUploadingLogo(true);
+      setMessage("");
+      setIsError(false);
+
+      const formData = new FormData();
+      formData.append("logo", logoFile);
+
+      const res = await fetch("/api/settings/upload-logo", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || "No se pudo subir el logo");
+      }
+
+      setLogoUrl(data.logoUrl);
+      setLogoFile(null);
+      setMessage("Logo actualizado correctamente.");
+      setIsError(false);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Error subiendo logo");
+      setIsError(true);
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -40,24 +80,21 @@ export default function CompanySettingsForm({
 
       const {
         data: { user },
-        error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError || !user) {
+      if (!user) {
         throw new Error("No autorizado");
       }
 
-      const updateData = {
-        company_name: companyName || null,
-        company_email: companyEmail || null,
-        company_phone: companyPhone || null,
-        company_address: companyAddress || null,
-        logo_url: canUseLogo ? logoUrl || null : null,
-      };
-
       const { error } = await supabase
         .from("profiles")
-        .update(updateData)
+        .update({
+          company_name: companyName || null,
+          company_email: companyEmail || null,
+          company_phone: companyPhone || null,
+          company_address: companyAddress || null,
+          logo_url: canUseLogo ? logoUrl || null : null,
+        })
         .eq("id", user.id);
 
       if (error) {
@@ -112,38 +149,55 @@ export default function CompanySettingsForm({
             placeholder="Dirección de la empresa"
           />
 
-          <label className="ui-label mt-4">Logo URL</label>
+          <div className="mt-5">
+            <label className="ui-label">Logo de la empresa</label>
 
-          {canUseLogo ? (
-            <>
-              <input
-                className="ui-input"
-                value={logoUrl}
-                onChange={(e) => setLogoUrl(e.target.value)}
-                placeholder="https://..."
-              />
+            {canUseLogo ? (
+              <>
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
+                  {logoUrl ? (
+                    <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={logoUrl}
+                        alt="Logo actual"
+                        className="max-h-24 w-auto object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <p className="mb-4 text-sm text-slate-500">
+                      Todavía no tienes logo.
+                    </p>
+                  )}
 
-              {logoUrl ? (
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={logoUrl}
-                    alt="Logo preview"
-                    className="max-h-20 w-auto object-contain"
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                    onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                    className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-xl file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
                   />
+
+                  <button
+                    type="button"
+                    onClick={uploadLogo}
+                    disabled={uploadingLogo || !logoFile}
+                    className="btn btn-primary mt-4"
+                  >
+                    {uploadingLogo ? "Subiendo..." : "Cambiar logo"}
+                  </button>
                 </div>
-              ) : null}
-            </>
-          ) : (
-            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
-              <p className="text-sm font-semibold text-blue-700">
-                Logo disponible solo en Pro o Business.
-              </p>
-              <a href="/pricing" className="btn btn-primary mt-4">
-                Upgrade
-              </a>
-            </div>
-          )}
+              </>
+            ) : (
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                <p className="text-sm font-semibold text-blue-700">
+                  Logo disponible solo en Pro o Business.
+                </p>
+                <a href="/pricing" className="btn btn-primary mt-4">
+                  Upgrade
+                </a>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
