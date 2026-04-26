@@ -23,7 +23,9 @@ export default async function ConfiguracionPage() {
     .single();
 
   const plan = profile?.plan || "starter";
-  const canUseLogo = plan === "pro" || plan === "business";
+
+  // Logo disponible para todos los usuarios
+  const canUseLogo = true;
 
   return (
     <main className="ui-page">
@@ -38,31 +40,14 @@ export default async function ConfiguracionPage() {
           </h1>
 
           <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600 md:text-xl">
-            Guarda los datos de tu empresa para mostrarlos correctamente en
-            facturas, emails y pagos.
+            Cambia tu logo cuando quieras y guarda los datos de tu empresa para
+            mostrarlos correctamente en facturas, emails y PDFs.
           </p>
 
           <div className="mt-6 inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700">
             Plan actual: {plan}
           </div>
         </section>
-
-        {!canUseLogo ? (
-          <section className="mt-6 ui-panel">
-            <h2 className="text-2xl font-bold text-slate-950">
-              Logo disponible en Pro
-            </h2>
-
-            <p className="mt-3 text-slate-600">
-              Tu plan actual permite configurar datos básicos de empresa. Para
-              mostrar tu logo en facturas y emails, sube a Pro o Business.
-            </p>
-
-            <a href="/pricing" className="btn btn-primary mt-6">
-              Upgrade plan
-            </a>
-          </section>
-        ) : null}
 
         <section className="mt-6">
           <CompanySettingsForm
@@ -72,7 +57,7 @@ export default async function ConfiguracionPage() {
               company_email: profile?.company_email || "",
               company_phone: profile?.company_phone || "",
               company_address: profile?.company_address || "",
-              logo_url: canUseLogo ? profile?.logo_url || "" : "",
+              logo_url: profile?.logo_url || "",
             }}
           />
         </section>
