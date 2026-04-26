@@ -4,13 +4,17 @@ import { createServerClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 
 export default async function AdminPage() {
+  console.log("ADMIN VERSION NUEVA");
+
   const supabase = await createServerClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) {
+    redirect("/login");
+  }
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -18,12 +22,10 @@ export default async function AdminPage() {
     .eq("id", user.id)
     .single();
 
-  // 🔒 Solo admin
   if (profile?.role !== "admin") {
     redirect("/dashboard");
   }
 
-  // Datos para panel
   const { data: users } = await supabase
     .from("profiles")
     .select(
@@ -33,7 +35,7 @@ export default async function AdminPage() {
 
   const { data: invoices } = await supabase
     .from("invoices")
-    .select("id, invoice_number, client_name, status, total, created_at")
+    .select("id, invoice_number, client_name, client_email, status, total, created_at")
     .order("created_at", { ascending: false })
     .limit(10);
 
@@ -42,125 +44,156 @@ export default async function AdminPage() {
       <AppHeader />
 
       <div className="ui-shell">
-        {/* HEADER */}
         <section className="ui-card p-6 md:p-8">
           <div className="ui-badge">Admin</div>
 
-          <h1 className="mt-5 text-4xl font-extrabold text-slate-950 md:text-6xl">
+          <h1 className="mt-5 text-4xl font-extrabold tracking-tight text-slate-950 md:text-6xl">
             ADMIN NUEVO PRO 🚀
           </h1>
 
-          <p className="mt-4 text-slate-600">
-            Control total del sistema, usuarios y facturación.
+          <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600 md:text-xl">
+            Panel actualizado para controlar usuarios, planes, facturas y estado
+            del sistema.
           </p>
 
-          <div className="mt-6 flex gap-3 flex-wrap">
-            <span className="ui-chip">Rol: {profile?.role}</span>
-            <span className="ui-chip">Plan: {profile?.plan}</span>
-            <span className="ui-chip">
-              Estado: {profile?.subscription_status}
+          <div className="mt-6 flex flex-wrap gap-3">
+            <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700">
+              Rol: {profile?.role || "member"}
+            </span>
+
+            <span className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
+              Plan: {profile?.plan || "free"}
+            </span>
+
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+              Estado: {profile?.subscription_status || "active"}
             </span>
           </div>
 
-          <div className="mt-6 flex gap-3">
+          <div className="ui-actions mt-8">
             <Link href="/dashboard" className="btn btn-secondary">
               Dashboard
             </Link>
+
             <Link href="/invoice" className="btn btn-secondary">
               Facturas
             </Link>
+
             <Link href="/configuracion" className="btn btn-primary">
               Configuración
             </Link>
           </div>
         </section>
 
-        {/* STATS */}
-        <section className="grid gap-4 md:grid-cols-3 mt-6">
+        <section className="mt-6 grid gap-4 md:grid-cols-3">
           <div className="ui-panel">
-            <p className="text-sm text-slate-500">Usuarios</p>
-            <p className="text-3xl font-bold">{users?.length || 0}</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500">
+              Usuarios
+            </p>
+            <p className="mt-4 text-3xl font-extrabold text-slate-950">
+              {users?.length || 0}
+            </p>
           </div>
 
           <div className="ui-panel">
-            <p className="text-sm text-slate-500">Facturas</p>
-            <p className="text-3xl font-bold">{invoices?.length || 0}</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500">
+              Facturas recientes
+            </p>
+            <p className="mt-4 text-3xl font-extrabold text-slate-950">
+              {invoices?.length || 0}
+            </p>
           </div>
 
           <div className="ui-panel">
-            <p className="text-sm text-slate-500">Acceso</p>
-            <p className="text-3xl font-bold text-emerald-600">FULL</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500">
+              Acceso
+            </p>
+            <p className="mt-4 text-3xl font-extrabold text-emerald-600">
+              FULL
+            </p>
           </div>
         </section>
 
-        {/* USUARIOS */}
-        <section className="ui-card mt-6 p-4">
-          <h2 className="text-2xl font-bold mb-4">Usuarios</h2>
+        <section className="mt-6 ui-card p-4 md:p-6">
+          <h2 className="mb-4 text-2xl font-bold tracking-tight text-slate-950">
+            Usuarios
+          </h2>
 
-          <div className="overflow-x-auto">
-            <table className="ui-table min-w-[900px]">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Empresa</th>
-                  <th>Email</th>
-                  <th>Rol</th>
-                  <th>Plan</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {(users || []).map((u) => (
-                  <tr key={u.id}>
-                    <td>{u.full_name || "-"}</td>
-                    <td>{u.company_name || "-"}</td>
-                    <td>{u.company_email || "-"}</td>
-                    <td>{u.role}</td>
-                    <td>{u.plan}</td>
-                    <td>{u.subscription_status}</td>
+          <div className="ui-table-wrap">
+            <div className="overflow-x-auto">
+              <table className="ui-table min-w-[1000px]">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Empresa</th>
+                    <th>Email</th>
+                    <th>Rol</th>
+                    <th>Plan</th>
+                    <th>Estado</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+
+                <tbody>
+                  {(users || []).map((item) => (
+                    <tr key={item.id}>
+                      <td className="font-semibold text-slate-950">
+                        {item.full_name || "—"}
+                      </td>
+                      <td>{item.company_name || "—"}</td>
+                      <td>{item.company_email || "—"}</td>
+                      <td>{item.role || "member"}</td>
+                      <td>{item.plan || "free"}</td>
+                      <td>{item.subscription_status || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
-        {/* FACTURAS */}
-        <section className="ui-card mt-6 p-4">
-          <h2 className="text-2xl font-bold mb-4">Últimas facturas</h2>
+        <section className="mt-6 ui-card p-4 md:p-6">
+          <h2 className="mb-4 text-2xl font-bold tracking-tight text-slate-950">
+            Últimas facturas
+          </h2>
 
-          <div className="overflow-x-auto">
-            <table className="ui-table min-w-[900px]">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Cliente</th>
-                  <th>Estado</th>
-                  <th>Total</th>
-                  <th></th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {(invoices || []).map((inv) => (
-                  <tr key={inv.id}>
-                    <td>{inv.invoice_number || "-"}</td>
-                    <td>{inv.client_name || "-"}</td>
-                    <td>{inv.status}</td>
-                    <td>${Number(inv.total || 0).toFixed(2)}</td>
-                    <td>
-                      <Link
-                        href={`/invoice/${inv.id}`}
-                        className="btn btn-secondary"
-                      >
-                        Ver
-                      </Link>
-                    </td>
+          <div className="ui-table-wrap">
+            <div className="overflow-x-auto">
+              <table className="ui-table min-w-[1000px]">
+                <thead>
+                  <tr>
+                    <th>Número</th>
+                    <th>Cliente</th>
+                    <th>Email</th>
+                    <th>Estado</th>
+                    <th>Total</th>
+                    <th>Ver</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+
+                <tbody>
+                  {(invoices || []).map((invoice) => (
+                    <tr key={invoice.id}>
+                      <td className="font-semibold text-slate-950">
+                        {invoice.invoice_number || "—"}
+                      </td>
+                      <td>{invoice.client_name || "—"}</td>
+                      <td>{invoice.client_email || "—"}</td>
+                      <td>{invoice.status || "pending"}</td>
+                      <td>${Number(invoice.total || 0).toFixed(2)}</td>
+                      <td>
+                        <Link
+                          href={`/invoice/${invoice.id}`}
+                          className="btn btn-secondary"
+                        >
+                          Ver
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
       </div>
