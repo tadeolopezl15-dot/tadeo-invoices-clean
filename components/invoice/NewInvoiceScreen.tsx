@@ -13,15 +13,17 @@ export default function NewInvoiceScreen({ userId }: { userId: string }) {
     amount: "",
   });
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm((prev) => ({
-      ...prev,
+  function handleChange(e: any) {
+    setForm({
+      ...form,
       [e.target.name]: e.target.value,
-    }));
+    });
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function handleSubmit(e: any) {
+    e.preventDefault(); // 🔥 ESTO ES CLAVE
+
+    console.log("SUBMIT FUNCIONA");
 
     setLoading(true);
 
@@ -35,25 +37,27 @@ export default function NewInvoiceScreen({ userId }: { userId: string }) {
 
     const data = await res.json();
 
+    console.log("RESPUESTA:", data);
+
     if (!res.ok) {
-      alert(data.error || "Error al guardar factura");
+      alert(data.error || "Error al guardar");
       setLoading(false);
       return;
     }
 
+    alert("Factura creada");
     window.location.href = `/invoice/${data.invoiceId}`;
   }
 
   return (
-    <form onSubmit={handleSubmit} className="ui-card mt-6 p-6 space-y-5">
-      <input type="hidden" value={userId} readOnly />
-
+    <form
+      onSubmit={handleSubmit} // 🔥 OBLIGATORIO
+      method="POST" // 🔥 evita GET
+      className="ui-card mt-6 p-6 space-y-5"
+    >
       <div>
-        <label className="mb-2 block text-sm font-semibold text-slate-700">
-          Nombre del cliente
-        </label>
+        <label>Nombre del cliente</label>
         <input
-          type="text"
           name="client_name"
           value={form.client_name}
           onChange={handleChange}
@@ -63,12 +67,10 @@ export default function NewInvoiceScreen({ userId }: { userId: string }) {
       </div>
 
       <div>
-        <label className="mb-2 block text-sm font-semibold text-slate-700">
-          Correo del cliente
-        </label>
+        <label>Correo del cliente</label>
         <input
-          type="email"
           name="client_email"
+          type="email"
           value={form.client_email}
           onChange={handleChange}
           required
@@ -77,11 +79,8 @@ export default function NewInvoiceScreen({ userId }: { userId: string }) {
       </div>
 
       <div>
-        <label className="mb-2 block text-sm font-semibold text-slate-700">
-          Nombre de tu empresa
-        </label>
+        <label>Nombre de tu empresa</label>
         <input
-          type="text"
           name="company_name"
           value={form.company_name}
           onChange={handleChange}
@@ -91,12 +90,10 @@ export default function NewInvoiceScreen({ userId }: { userId: string }) {
       </div>
 
       <div>
-        <label className="mb-2 block text-sm font-semibold text-slate-700">
-          Correo de tu empresa
-        </label>
+        <label>Correo de tu empresa</label>
         <input
-          type="email"
           name="company_email"
+          type="email"
           value={form.company_email}
           onChange={handleChange}
           required
@@ -105,26 +102,18 @@ export default function NewInvoiceScreen({ userId }: { userId: string }) {
       </div>
 
       <div>
-        <label className="mb-2 block text-sm font-semibold text-slate-700">
-          Monto
-        </label>
+        <label>Monto</label>
         <input
-          type="number"
           name="amount"
+          type="number"
           value={form.amount}
           onChange={handleChange}
           required
-          min="1"
-          step="0.01"
           className="input"
         />
       </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="btn btn-primary w-full"
-      >
+      <button type="submit" className="btn btn-primary w-full">
         {loading ? "Guardando..." : "Guardar factura"}
       </button>
     </form>
