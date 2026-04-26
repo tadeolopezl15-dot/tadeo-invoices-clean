@@ -21,9 +21,10 @@ export async function POST(req: Request) {
 
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser();
 
-    if (!user) {
+    if (userError || !user) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
@@ -31,14 +32,17 @@ export async function POST(req: Request) {
     const file = formData.get("logo") as File | null;
 
     if (!file) {
-      return NextResponse.json({ error: "Falta el logo" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Selecciona un logo primero" },
+        { status: 400 }
+      );
     }
 
-    const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+    const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
 
-    if (!allowed.includes(file.type)) {
+    if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        { error: "Solo PNG, JPG o WEBP" },
+        { error: "Solo se permite PNG, JPG, JPEG o WEBP" },
         { status: 400 }
       );
     }
@@ -47,11 +51,11 @@ export async function POST(req: Request) {
 
     const ext = file.name.split(".").pop() || "png";
     const filePath = `${user.id}/logo-${Date.now()}.${ext}`;
-    const bytes = await file.arrayBuffer();
+    const arrayBuffer = await file.arrayBuffer();
 
     const { error: uploadError } = await admin.storage
-      .from("company-logos")
-      .upload(filePath, Buffer.from(bytes), {
+      .from("logo")
+      .upload(filePath, Buffer.from(arrayBuffer), {
         contentType: file.type,
         upsert: true,
       });
@@ -59,16 +63,14 @@ export async function POST(req: Request) {
     if (uploadError) {
       console.error("UPLOAD_LOGO_ERROR", uploadError);
       return NextResponse.json(
-        { error: "No se pudo subir el logo" },
+        { error: uploadError.message || "No se pudo subir el logo" },
         { status: 500 }
       );
     }
 
-    const { data: publicUrlData } = admin.storage
-      .from("company-logos")
-      .getPublicUrl(filePath);
+    const { data } = admin.storage.from("logo").getPublicUrl(filePath);
 
-    const logoUrl = publicUrlData.publicUrl;
+    const logoUrl = data.publicUrl;
 
     const { error: updateError } = await admin
       .from("profiles")
@@ -76,16 +78,20 @@ export async function POST(req: Request) {
       .eq("id", user.id);
 
     if (updateError) {
-      console.error("UPDATE_LOGO_URL_ERROR", updateError);
+      console.error("UPDATE_PROFILE_LOGO_ERROR", updateError);
       return NextResponse.json(
-        { error: "Logo subido, pero no se guardó en el perfil" },
+        { error: updateError.message || "No se pudo guardar el logo" },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ logoUrl });
+    return NextResponse.json({
+      success: true,
+      logoUrl,
+    });
   } catch (error) {
     console.error("UPLOAD_LOGO_ROUTE_ERROR", error);
+
     return NextResponse.json(
       { error: "Error subiendo logo" },
       { status: 500 }
