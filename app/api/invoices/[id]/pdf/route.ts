@@ -18,6 +18,7 @@ function money(value: number, currency = "USD") {
 
 function formatDate(value: string | null | undefined, lang: Lang) {
   if (!value) return "-";
+
   return new Date(value).toLocaleDateString(lang === "es" ? "es-US" : "en-US", {
     year: "numeric",
     month: "short",
@@ -89,10 +90,11 @@ async function drawImageFromUrl({
     if (!res.ok) return false;
 
     const bytes = await res.arrayBuffer();
+    const contentType = res.headers.get("content-type") || "";
     const lower = url.toLowerCase();
 
     const img =
-      lower.includes(".png") || lower.includes("image/png")
+      lower.includes(".png") || contentType.includes("png")
         ? await pdfDoc.embedPng(bytes)
         : await pdfDoc.embedJpg(bytes);
 
@@ -116,25 +118,40 @@ async function drawImageFromUrl({
   }
 }
 
+async function loadInvoice(idOrToken: string) {
+  let result = await supabaseAdmin
+    .from("invoices")
+    .select("*, invoice_items(*)")
+    .eq("id", idOrToken)
+    .maybeSingle();
+
+  if (result.data) return result.data;
+
+  result = await supabaseAdmin
+    .from("invoices")
+    .select("*, invoice_items(*)")
+    .eq("public_token", idOrToken)
+    .maybeSingle();
+
+  return result.data;
+}
+
 export async function GET(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await context.params;
+
     const url = new URL(req.url);
     const lang: Lang = url.searchParams.get("lang") === "en" ? "en" : "es";
     const t = copy(lang);
 
-    const { data: invoice, error } = await supabaseAdmin
-      .from("invoices")
-      .select("*, invoice_items(*)")
-      .eq("id", id)
-      .single();
+    const invoice = await loadInvoice(id);
 
-    if (error || !invoice) {
+    if (!invoice) {
       return NextResponse.json(
-        { error: "Factura no encontrada" },
+        { error: "Factura no encontrada", id },
         { status: 404 }
       );
     }
@@ -145,12 +162,11 @@ export async function GET(
         "company_name, company_email, company_phone, company_address, logo_url"
       )
       .eq("id", invoice.user_id)
-      .single();
+      .maybeSingle();
 
     const currency = invoice.currency || "USD";
     const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      "https://tadeo-invoices-clean-pdw3.vercel.app";
+      process.env.NEXT_PUBLIC_SITE_URL || "https://www.tadeoinvoice.com";
 
     const publicPayUrl = invoice.public_token
       ? `${siteUrl}/public-invoice/${invoice.public_token}/pay`
@@ -213,7 +229,7 @@ export async function GET(
       }));
 
     if (!logoDrawn) {
-      page.drawText(profile?.company_name || "TADEO INVOICES", {
+      page.drawText(profile?.company_name || invoice.company_name || "TADEO INVOICES", {
         x: 44,
         y: 742,
         size: 16,
@@ -271,7 +287,7 @@ export async function GET(
       color: blue,
     });
 
-    page.drawText(companyName, {
+    page.drawText(String(companyName).slice(0, 36), {
       x: 44,
       y: 622,
       size: 15,
@@ -279,7 +295,7 @@ export async function GET(
       color: navy,
     });
 
-    page.drawText(companyEmail || "-", {
+    page.drawText(String(companyEmail || "-").slice(0, 42), {
       x: 44,
       y: 604,
       size: 10,
@@ -288,7 +304,7 @@ export async function GET(
     });
 
     if (companyPhone) {
-      page.drawText(companyPhone, {
+      page.drawText(String(companyPhone).slice(0, 32), {
         x: 44,
         y: 588,
         size: 10,
@@ -325,7 +341,7 @@ export async function GET(
       color: blue,
     });
 
-    page.drawText(invoice.client_name || "-", {
+    page.drawText(String(invoice.client_name || "-").slice(0, 30), {
       x: 352,
       y: 608,
       size: 15,
@@ -333,7 +349,7 @@ export async function GET(
       color: navy,
     });
 
-    page.drawText(invoice.client_email || "-", {
+    page.drawText(String(invoice.client_email || "-").slice(0, 34), {
       x: 352,
       y: 590,
       size: 10,
@@ -358,7 +374,8 @@ export async function GET(
     });
 
     const status = String(invoice.status || "pending").toLowerCase();
-    const statusColor = status === "paid" ? green : status === "pending" ? amber : muted;
+    const statusColor =
+      status === "paid" ? green : status === "pending" ? amber : muted;
 
     page.drawRectangle({
       x: 44,
@@ -453,14 +470,11 @@ export async function GET(
 
     y -= 36;
 
-    const items = invoice.invoice_items || [];
+    const items = Array.isArray(invoice.invoice_items)
+      ? invoice.invoice_items
+      : [];
 
-    for (const item of items) {
-      const qty = item.quantity ?? item.qty ?? 1;
-      const price = item.unit_price ?? item.price ?? 0;
-      const lineTotal =
-        item.line_total ?? item.total ?? Number(qty) * Number(price);
-
+    if (items.length === 0) {
       page.drawRectangle({
         x: 44,
         y: y - 10,
@@ -471,7 +485,7 @@ export async function GET(
         borderWidth: 0.5,
       });
 
-      page.drawText(String(item.description || "-").slice(0, 42), {
+      page.drawText("Factura", {
         x: 62,
         y: y + 2,
         size: 10,
@@ -479,7 +493,7 @@ export async function GET(
         color: navy,
       });
 
-      page.drawText(String(qty), {
+      page.drawText("1", {
         x: 316,
         y: y + 2,
         size: 10,
@@ -487,7 +501,7 @@ export async function GET(
         color: muted,
       });
 
-      page.drawText(money(Number(price), currency), {
+      page.drawText(money(Number(invoice.total || 0), currency), {
         x: 360,
         y: y + 2,
         size: 10,
@@ -495,17 +509,66 @@ export async function GET(
         color: muted,
       });
 
-      page.drawText(money(Number(lineTotal), currency), {
+      page.drawText(money(Number(invoice.total || 0), currency), {
         x: 482,
         y: y + 2,
         size: 10,
         font: bold,
         color: navy,
       });
+    } else {
+      for (const item of items) {
+        const qty = item.quantity ?? item.qty ?? 1;
+        const price = item.unit_price ?? item.price ?? 0;
+        const lineTotal =
+          item.line_total ?? item.total ?? Number(qty) * Number(price);
 
-      y -= 34;
+        page.drawRectangle({
+          x: 44,
+          y: y - 10,
+          width: 524,
+          height: 34,
+          color: white,
+          borderColor: line,
+          borderWidth: 0.5,
+        });
 
-      if (y < 190) break;
+        page.drawText(String(item.description || "-").slice(0, 42), {
+          x: 62,
+          y: y + 2,
+          size: 10,
+          font,
+          color: navy,
+        });
+
+        page.drawText(String(qty), {
+          x: 316,
+          y: y + 2,
+          size: 10,
+          font,
+          color: muted,
+        });
+
+        page.drawText(money(Number(price), currency), {
+          x: 360,
+          y: y + 2,
+          size: 10,
+          font,
+          color: muted,
+        });
+
+        page.drawText(money(Number(lineTotal), currency), {
+          x: 482,
+          y: y + 2,
+          size: 10,
+          font: bold,
+          color: navy,
+        });
+
+        y -= 34;
+
+        if (y < 190) break;
+      }
     }
 
     const subtotal = Number(invoice.subtotal || 0);
@@ -651,6 +714,7 @@ export async function GET(
     });
   } catch (error) {
     console.error("PDF_ERROR", error);
+
     return NextResponse.json(
       { error: "No se pudo generar el PDF" },
       { status: 500 }
