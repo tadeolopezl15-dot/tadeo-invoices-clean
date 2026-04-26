@@ -5,19 +5,41 @@ import { stripe } from "@/lib/stripe";
 
 type Plan = "starter" | "pro" | "business";
 
-const PRICE_BY_PLAN: Record<Plan, string | undefined> = {
-  starter: process.env.STRIPE_PRICE_STARTER,
-  pro: process.env.STRIPE_PRICE_PRO,
-  business: process.env.STRIPE_PRICE_BUSINESS,
-};
+function getPriceId(plan: Plan) {
+  const prices: Record<Plan, string | undefined> = {
+    starter:
+      process.env.STRIPE_PRICE_STARTER ||
+      process.env.STRIPE_PRICE_ID_STARTER,
+
+    pro:
+      process.env.STRIPE_PRICE_PRO ||
+      process.env.STRIPE_PRICE_ID_PRO,
+
+    business:
+      process.env.STRIPE_PRICE_BUSINESS ||
+      process.env.STRIPE_PRICE_ID_BUSINESS,
+  };
+
+  return prices[plan];
+}
 
 export async function POST(req: Request) {
   try {
-    const { plan } = (await req.json()) as { plan?: Plan };
+    const body = await req.json();
+    const plan = body.plan as Plan;
 
-    if (!plan || !PRICE_BY_PLAN[plan]) {
+    if (!plan || !["starter", "pro", "business"].includes(plan)) {
       return NextResponse.json(
-        { error: "Plan inválido o Price ID no configurado." },
+        { error: "Plan inválido." },
+        { status: 400 }
+      );
+    }
+
+    const priceId = getPriceId(plan);
+
+    if (!priceId) {
+      return NextResponse.json(
+        { error: `Price ID no configurado para el plan: ${plan}` },
         { status: 400 }
       );
     }
@@ -39,12 +61,12 @@ export async function POST(req: Request) {
 
     const {
       data: { user },
-      error,
+      error: userError,
     } = await supabase.auth.getUser();
 
-    if (error || !user) {
+    if (userError || !user) {
       return NextResponse.json(
-        { error: "Debes iniciar sesión para suscribirte." },
+        { error: "No autorizado. Inicia sesión primero." },
         { status: 401 }
       );
     }
@@ -65,7 +87,7 @@ export async function POST(req: Request) {
       },
       line_items: [
         {
-          price: PRICE_BY_PLAN[plan],
+          price: priceId,
           quantity: 1,
         },
       ],
@@ -76,8 +98,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ url: session.url });
   } catch (error) {
     console.error("STRIPE_CHECKOUT_ERROR", error);
+
     return NextResponse.json(
-      { error: "No se pudo crear el checkout." },
+      { error: "No se pudo crear el checkout de Stripe." },
       { status: 500 }
     );
   }
