@@ -1,237 +1,111 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useLang } from "@/components/LanguageProvider";
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
-type Item = {
-  description: string;
-  quantity: number;
-  unit_price: number;
-};
+export default function NewInvoiceScreen({ userId }: { userId: string }) {
+  const supabase = createClient();
 
-export default function NewInvoiceScreen({
-  action,
-}: {
-  action?: (formData: FormData) => void | Promise<void>;
-}) {
-  const { lang, t } = useLang();
+  const [loading, setLoading] = useState(false);
 
-  const [items, setItems] = useState<Item[]>([
-    { description: "", quantity: 1, unit_price: 0 },
-  ]);
+  const [form, setForm] = useState({
+    client_name: "",
+    client_email: "",
+    company_name: "",
+    company_email: "",
+    amount: "",
+  });
 
-  function updateItem(index: number, field: keyof Item, value: string | number) {
-    setItems((prev) =>
-      prev.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      )
-    );
+  function handleChange(e: any) {
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
+    });
   }
 
-  function addItem() {
-    setItems((prev) => [
-      ...prev,
-      { description: "", quantity: 1, unit_price: 0 },
+  async function handleSubmit(e: any) {
+    e.preventDefault();
+    console.log("SUBMIT CLICKED"); // 🔥 IMPORTANTE
+
+    setLoading(true);
+
+    const subtotal = Number(form.amount || 0);
+    const total = subtotal;
+
+    const { data, error } = await supabase.from("invoices").insert([
+      {
+        user_id: userId,
+        invoice_number: `INV-${Date.now()}`,
+        client_name: form.client_name,
+        client_email: form.client_email,
+        company_name: form.company_name,
+        company_email: form.company_email,
+        issue_date: new Date().toISOString(),
+        due_date: new Date().toISOString(),
+        currency: "USD",
+        subtotal,
+        total,
+        status: "draft",
+      },
     ]);
+
+    console.log("INSERT RESULT:", { data, error }); // 🔥
+
+    if (error) {
+      alert(error.message);
+      setLoading(false);
+      return;
+    }
+
+    alert("Factura creada");
+    window.location.href = "/invoice";
   }
-
-  function removeItem(index: number) {
-    setItems((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  const totals = useMemo(() => {
-    const subtotal = items.reduce(
-      (sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_price || 0),
-      0
-    );
-
-    return {
-      subtotal,
-      tax: 0,
-      total: subtotal,
-    };
-  }, [items]);
 
   return (
-    <form action={action} className="space-y-8">
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            {lang === "es" ? "Nombre del cliente" : "Client name"}
-          </label>
-          <input
-            type="text"
-            name="client_name"
-            required
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white"
-          />
-        </div>
+    <form onSubmit={handleSubmit} className="p-6 space-y-4 bg-white rounded-xl">
+      <input
+        name="client_name"
+        placeholder="Cliente"
+        onChange={handleChange}
+        required
+        className="input"
+      />
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            {lang === "es" ? "Correo del cliente" : "Client email"}
-          </label>
-          <input
-            type="email"
-            name="client_email"
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white"
-          />
-        </div>
+      <input
+        name="client_email"
+        placeholder="Email cliente"
+        onChange={handleChange}
+        required
+        className="input"
+      />
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            {lang === "es" ? "Fecha de emisión" : "Issue date"}
-          </label>
-          <input
-            type="date"
-            name="issue_date"
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white"
-          />
-        </div>
+      <input
+        name="company_name"
+        placeholder="Tu empresa"
+        onChange={handleChange}
+        required
+        className="input"
+      />
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            {lang === "es" ? "Fecha de vencimiento" : "Due date"}
-          </label>
-          <input
-            type="date"
-            name="due_date"
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white"
-          />
-        </div>
+      <input
+        name="company_email"
+        placeholder="Email empresa"
+        onChange={handleChange}
+        required
+        className="input"
+      />
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            {lang === "es" ? "Moneda" : "Currency"}
-          </label>
-          <input
-            type="text"
-            name="currency"
-            defaultValue="USD"
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white"
-          />
-        </div>
-      </div>
+      <input
+        name="amount"
+        placeholder="Monto"
+        type="number"
+        onChange={handleChange}
+        required
+        className="input"
+      />
 
-      <div>
-        <h2 className="text-xl font-bold text-slate-950">
-          {lang === "es" ? "Conceptos" : "Items"}
-        </h2>
-
-        <div className="mt-4 space-y-4">
-          {items.map((item, index) => (
-            <div
-              key={index}
-              className="grid gap-4 rounded-[24px] border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_120px_160px_auto]"
-            >
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  {lang === "es" ? "Descripción" : "Description"}
-                </label>
-                <input
-                  type="text"
-                  name="item_description"
-                  value={item.description}
-                  onChange={(e) =>
-                    updateItem(index, "description", e.target.value)
-                  }
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  {lang === "es" ? "Cant." : "Qty"}
-                </label>
-                <input
-                  type="number"
-                  name="item_quantity"
-                  min={1}
-                  step="1"
-                  value={item.quantity}
-                  onChange={(e) =>
-                    updateItem(index, "quantity", Number(e.target.value))
-                  }
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  {lang === "es" ? "Precio unitario" : "Unit price"}
-                </label>
-                <input
-                  type="number"
-                  name="item_unit_price"
-                  min={0}
-                  step="0.01"
-                  value={item.unit_price}
-                  onChange={(e) =>
-                    updateItem(index, "unit_price", Number(e.target.value))
-                  }
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-                />
-              </div>
-
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  onClick={() => removeItem(index)}
-                  className="h-12 rounded-2xl border border-rose-200 px-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
-                >
-                  {lang === "es" ? "Quitar" : "Remove"}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={addItem}
-          className="mt-4 inline-flex rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-        >
-          {lang === "es" ? "+ Agregar concepto" : "+ Add item"}
-        </button>
-      </div>
-
-      <div>
-        <label className="mb-2 block text-sm font-medium text-slate-700">
-          {t.common.notes}
-        </label>
-        <textarea
-          name="notes"
-          rows={4}
-          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:bg-white"
-        />
-      </div>
-
-      <div className="ml-auto w-full max-w-md space-y-3">
-        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-4">
-          <span className="text-sm text-slate-500">{t.common.subtotal}</span>
-          <span className="font-semibold text-slate-950">
-            {totals.subtotal.toFixed(2)}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-4">
-          <span className="text-sm text-slate-500">{t.common.tax}</span>
-          <span className="font-semibold text-slate-950">
-            {totals.tax.toFixed(2)}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between rounded-2xl bg-slate-950 px-5 py-4 text-white">
-          <span className="text-sm">{t.common.total}</span>
-          <span className="text-lg font-bold">{totals.total.toFixed(2)}</span>
-        </div>
-      </div>
-
-      <button
-        type="submit"
-        className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
-      >
-        {t.common.createInvoice}
+      <button type="submit" className="btn btn-primary w-full">
+        {loading ? "Guardando..." : "Crear factura"}
       </button>
     </form>
   );

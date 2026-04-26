@@ -28,9 +28,9 @@ export default async function NewInvoicePage() {
     .from("profiles")
     .select("plan")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
-  const plan = (profile?.plan || "starter") as Plan;
+  const plan = ((profile?.plan || "starter") as Plan);
   const limit = invoiceLimit(plan);
 
   const { count } = await supabase
@@ -93,7 +93,7 @@ export default async function NewInvoicePage() {
         </section>
 
         <section className="mt-6">
-          <NewInvoiceScreen />
+          <NewInvoiceScreen userId={user.id} />
         </section>
       </div>
     </main>

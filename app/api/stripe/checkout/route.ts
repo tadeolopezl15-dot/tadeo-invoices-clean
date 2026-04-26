@@ -1,90 +1,58 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
-import { getStripe } from "@/lib/stripe";
+import { createServerClient } from "@supabase/ssr";
+import { stripe } from "@/lib/stripe";
 
-const PRICE_MAP: Record<string, string | undefined> = {
-  starter: process.env.STRIPE_PRICE_ID_STARTER,
-  pro: process.env.STRIPE_PRICE_ID_PRO,
-  business: process.env.STRIPE_PRICE_ID_BUSINESS,
+type Plan = "starter" | "pro" | "business";
+
+const PRICE_BY_PLAN: Record<Plan, string | undefined> = {
+  starter: process.env.STRIPE_PRICE_STARTER,
+  pro: process.env.STRIPE_PRICE_PRO,
+  business: process.env.STRIPE_PRICE_BUSINESS,
 };
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createServerClient();
-    const stripe = getStripe();
+    const { plan } = (await req.json()) as { plan?: Plan };
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
-    const body = await req.json();
-    const plan = String(body?.plan || "pro").toLowerCase();
-
-    if (!["starter", "pro", "business"].includes(plan)) {
-      return NextResponse.json({ error: "Plan inválido" }, { status: 400 });
-    }
-
-    const priceId = PRICE_MAP[plan];
-
-    if (!priceId) {
+    if (!plan || !PRICE_BY_PLAN[plan]) {
       return NextResponse.json(
-        { error: `Falta el Price ID para ${plan}` },
-        { status: 500 }
+        { error: "Plan inválido o Price ID no configurado." },
+        { status: 400 }
       );
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("stripe_customer_id, company_name")
-      .eq("id", user.id)
-      .single();
+    const cookieStore = await cookies();
 
-    let customerId = profile?.stripe_customer_id || null;
-
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email || undefined,
-        name:
-          profile?.company_name ||
-          user.user_metadata?.full_name ||
-          user.email ||
-          undefined,
-        metadata: {
-          user_id: user.id,
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll() {},
         },
-      });
+      }
+    );
 
-      customerId = customer.id;
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
 
-      await supabase
-        .from("profiles")
-        .update({
-          stripe_customer_id: customerId,
-        })
-        .eq("id", user.id);
+    if (error || !user) {
+      return NextResponse.json(
+        { error: "Debes iniciar sesión para suscribirte." },
+        { status: 401 }
+      );
     }
-
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      "https://tadeo-invoices-clean-pdw3.vercel.app";
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      customer: customerId,
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      success_url: `${siteUrl}/membresias/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/membresias/cancel`,
-      allow_promotion_codes: true,
+      customer_email: user.email ?? undefined,
+      client_reference_id: user.id,
       metadata: {
         user_id: user.id,
         plan,
@@ -95,13 +63,21 @@ export async function POST(req: Request) {
           plan,
         },
       },
+      line_items: [
+        {
+          price: PRICE_BY_PLAN[plan],
+          quantity: 1,
+        },
+      ],
+      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard?membership=success`,
+      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/pricing?membership=cancelled`,
     });
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error("CHECKOUT_ERROR", error);
+    console.error("STRIPE_CHECKOUT_ERROR", error);
     return NextResponse.json(
-      { error: "No se pudo crear el checkout" },
+      { error: "No se pudo crear el checkout." },
       { status: 500 }
     );
   }
