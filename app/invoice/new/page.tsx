@@ -30,7 +30,7 @@ export default async function NewInvoicePage() {
     .eq("id", user.id)
     .maybeSingle();
 
-  const plan = ((profile?.plan || "starter") as Plan);
+  const plan = (profile?.plan || "starter") as Plan;
   const limit = invoiceLimit(plan);
 
   const { count } = await supabase

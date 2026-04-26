@@ -1,11 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 export default function NewInvoiceScreen({ userId }: { userId: string }) {
-  const supabase = createClient();
-
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -16,56 +13,49 @@ export default function NewInvoiceScreen({ userId }: { userId: string }) {
     amount: "",
   });
 
-  function handleChange(e: any) {
-    setForm({
-      ...form,
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setForm((prev) => ({
+      ...prev,
       [e.target.name]: e.target.value,
-    });
+    }));
   }
 
-  async function handleSubmit(e: any) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    console.log("SUBMIT CLICKED"); // 🔥 IMPORTANTE
-
     setLoading(true);
 
-    const subtotal = Number(form.amount || 0);
-    const total = subtotal;
+    console.log("SUBMIT CLICKED", { userId, form });
 
-    const { data, error } = await supabase.from("invoices").insert([
-      {
-        user_id: userId,
-        invoice_number: `INV-${Date.now()}`,
-        client_name: form.client_name,
-        client_email: form.client_email,
-        company_name: form.company_name,
-        company_email: form.company_email,
-        issue_date: new Date().toISOString(),
-        due_date: new Date().toISOString(),
-        currency: "USD",
-        subtotal,
-        total,
-        status: "draft",
+    const res = await fetch("/api/invoices/create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    ]);
+      body: JSON.stringify(form),
+    });
 
-    console.log("INSERT RESULT:", { data, error }); // 🔥
+    const data = await res.json();
 
-    if (error) {
-      alert(error.message);
+    console.log("CREATE INVOICE RESPONSE", data);
+
+    if (!res.ok) {
+      alert(data.error || "Error al guardar factura");
       setLoading(false);
       return;
     }
 
-    alert("Factura creada");
-    window.location.href = "/invoice";
+    alert("Factura creada correctamente");
+    window.location.href = `/invoice/${data.invoiceId}`;
   }
 
   return (
-    <form onSubmit={handleSubmit} className="p-6 space-y-4 bg-white rounded-xl">
+    <form onSubmit={handleSubmit} className="ui-card p-6 space-y-4">
+      <h2 className="text-2xl font-black text-slate-950">Nueva factura</h2>
+
       <input
         name="client_name"
-        placeholder="Cliente"
+        placeholder="Nombre del cliente"
+        value={form.client_name}
         onChange={handleChange}
         required
         className="input"
@@ -73,7 +63,9 @@ export default function NewInvoiceScreen({ userId }: { userId: string }) {
 
       <input
         name="client_email"
-        placeholder="Email cliente"
+        type="email"
+        placeholder="Email del cliente"
+        value={form.client_email}
         onChange={handleChange}
         required
         className="input"
@@ -81,7 +73,8 @@ export default function NewInvoiceScreen({ userId }: { userId: string }) {
 
       <input
         name="company_name"
-        placeholder="Tu empresa"
+        placeholder="Nombre de tu empresa"
+        value={form.company_name}
         onChange={handleChange}
         required
         className="input"
@@ -89,7 +82,9 @@ export default function NewInvoiceScreen({ userId }: { userId: string }) {
 
       <input
         name="company_email"
-        placeholder="Email empresa"
+        type="email"
+        placeholder="Email de tu empresa"
+        value={form.company_email}
         onChange={handleChange}
         required
         className="input"
@@ -97,14 +92,17 @@ export default function NewInvoiceScreen({ userId }: { userId: string }) {
 
       <input
         name="amount"
-        placeholder="Monto"
         type="number"
+        min="1"
+        step="0.01"
+        placeholder="Monto"
+        value={form.amount}
         onChange={handleChange}
         required
         className="input"
       />
 
-      <button type="submit" className="btn btn-primary w-full">
+      <button type="submit" disabled={loading} className="btn btn-primary w-full">
         {loading ? "Guardando..." : "Crear factura"}
       </button>
     </form>
