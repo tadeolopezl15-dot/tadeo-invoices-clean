@@ -22,11 +22,6 @@ export default async function ConfiguracionPage() {
     .eq("id", user.id)
     .single();
 
-  const plan = profile?.plan || "starter";
-
-  // Logo disponible para todos los usuarios
-  const canUseLogo = true;
-
   return (
     <main className="ui-page">
       <AppHeader />
@@ -45,13 +40,12 @@ export default async function ConfiguracionPage() {
           </p>
 
           <div className="mt-6 inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700">
-            Plan actual: {plan}
+            Plan actual: {profile?.plan || "starter"}
           </div>
         </section>
 
         <section className="mt-6">
           <CompanySettingsForm
-            canUseLogo={canUseLogo}
             initialData={{
               company_name: profile?.company_name || "",
               company_email: profile?.company_email || "",
