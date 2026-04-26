@@ -8,22 +8,25 @@ export default function NewInvoiceScreen({ userId }: { userId: string }) {
   const [form, setForm] = useState({
     client_name: "",
     client_email: "",
+    issue_date: "",
+    due_date: "",
+    currency: "USD",
+    subtotal: "",
     company_name: "Tadeo Invoices",
     company_email: "admin@tadeoinvoice.com",
-    amount: "",
   });
 
-  function handleChange(e: any) {
-    setForm({
-      ...form,
+  function handleChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) {
+    setForm((prev) => ({
+      ...prev,
       [e.target.name]: e.target.value,
-    });
+    }));
   }
 
-  async function handleSubmit(e: any) {
-    e.preventDefault(); // 🔥 ESTO ES CLAVE
-
-    console.log("SUBMIT FUNCIONA");
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
 
     setLoading(true);
 
@@ -32,31 +35,32 @@ export default function NewInvoiceScreen({ userId }: { userId: string }) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        ...form,
+        amount: form.subtotal,
+        total: form.subtotal,
+      }),
     });
 
     const data = await res.json();
 
-    console.log("RESPUESTA:", data);
-
     if (!res.ok) {
-      alert(data.error || "Error al guardar");
+      alert(data.error || "Error al guardar factura");
       setLoading(false);
       return;
     }
 
-    alert("Factura creada");
     window.location.href = `/invoice/${data.invoiceId}`;
   }
 
   return (
-    <form
-      onSubmit={handleSubmit} // 🔥 OBLIGATORIO
-      method="POST" // 🔥 evita GET
-      className="ui-card mt-6 p-6 space-y-5"
-    >
+    <form onSubmit={handleSubmit} className="ui-card mt-6 p-6 space-y-6">
+      <input type="hidden" value={userId} readOnly />
+
       <div>
-        <label>Nombre del cliente</label>
+        <label className="mb-2 block text-sm font-semibold text-slate-700">
+          Nombre del cliente
+        </label>
         <input
           name="client_name"
           value={form.client_name}
@@ -67,10 +71,12 @@ export default function NewInvoiceScreen({ userId }: { userId: string }) {
       </div>
 
       <div>
-        <label>Correo del cliente</label>
+        <label className="mb-2 block text-sm font-semibold text-slate-700">
+          Correo del cliente
+        </label>
         <input
-          name="client_email"
           type="email"
+          name="client_email"
           value={form.client_email}
           onChange={handleChange}
           required
@@ -79,10 +85,13 @@ export default function NewInvoiceScreen({ userId }: { userId: string }) {
       </div>
 
       <div>
-        <label>Nombre de tu empresa</label>
+        <label className="mb-2 block text-sm font-semibold text-slate-700">
+          Fecha de emisión
+        </label>
         <input
-          name="company_name"
-          value={form.company_name}
+          type="date"
+          name="issue_date"
+          value={form.issue_date}
           onChange={handleChange}
           required
           className="input"
@@ -90,11 +99,13 @@ export default function NewInvoiceScreen({ userId }: { userId: string }) {
       </div>
 
       <div>
-        <label>Correo de tu empresa</label>
+        <label className="mb-2 block text-sm font-semibold text-slate-700">
+          Fecha de vencimiento
+        </label>
         <input
-          name="company_email"
-          type="email"
-          value={form.company_email}
+          type="date"
+          name="due_date"
+          value={form.due_date}
           onChange={handleChange}
           required
           className="input"
@@ -102,18 +113,41 @@ export default function NewInvoiceScreen({ userId }: { userId: string }) {
       </div>
 
       <div>
-        <label>Monto</label>
+        <label className="mb-2 block text-sm font-semibold text-slate-700">
+          Moneda
+        </label>
+        <select
+          name="currency"
+          value={form.currency}
+          onChange={handleChange}
+          className="input"
+        >
+          <option value="USD">USD</option>
+          <option value="EUR">EUR</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="mb-2 block text-sm font-semibold text-slate-700">
+          Total
+        </label>
         <input
-          name="amount"
           type="number"
-          value={form.amount}
+          min="1"
+          step="0.01"
+          name="subtotal"
+          value={form.subtotal}
           onChange={handleChange}
           required
           className="input"
         />
       </div>
 
-      <button type="submit" className="btn btn-primary w-full">
+      <button
+        type="submit"
+        disabled={loading}
+        className="btn btn-primary w-full"
+      >
         {loading ? "Guardando..." : "Guardar factura"}
       </button>
     </form>
