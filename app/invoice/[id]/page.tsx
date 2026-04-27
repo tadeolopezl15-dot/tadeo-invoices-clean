@@ -1,176 +1,191 @@
-import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
 import AppHeader from "@/components/AppHeader";
-import DeleteInvoiceButton from "@/components/invoice/DeleteInvoiceButton";
-import SendInvoiceEmailButton from "@/components/invoice/SendInvoiceEmailButton";
+import Link from "next/link";
+import PayInvoiceButton from "@/components/invoice/PayInvoiceButton";
 
-type Props = {
+export default async function InvoiceDetailPage({
+  params,
+}: {
   params: Promise<{ id: string }>;
-};
-
-function getStatusClass(status: string | null) {
-  const value = (status || "").toLowerCase();
-  if (value === "paid") return "ui-pill ui-pill-paid";
-  if (value === "canceled") return "ui-pill ui-pill-canceled";
-  return "ui-pill ui-pill-pending";
-}
-
-export default async function InvoiceDetailPage({ params }: Props) {
+}) {
   const { id } = await params;
+
   const supabase = await createServerClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
 
   const { data: invoice, error } = await supabase
     .from("invoices")
     .select("*")
     .eq("id", id)
-    .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
-  if (error || !invoice) notFound();
+  if (error || !invoice) {
+    console.error("LOAD_INVOICE_ERROR", error);
+    return notFound();
+  }
 
   const { data: items } = await supabase
     .from("invoice_items")
     .select("*")
     .eq("invoice_id", invoice.id);
 
+  const currency = invoice.currency || "USD";
+
+  function money(value: number) {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+    }).format(Number(value || 0));
+  }
+
   return (
     <main className="ui-page">
       <AppHeader />
 
       <div className="ui-shell">
-        <div className="ui-card p-6 md:p-8">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        {/* HEADER */}
+        <section className="ui-card p-6 md:p-8">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 md:text-4xl">
-                Factura #{invoice.invoice_number}
+              <div className="ui-badge">Factura</div>
+
+              <h1 className="mt-3 text-3xl font-extrabold text-slate-950 md:text-5xl">
+                #{invoice.invoice_number || invoice.id}
               </h1>
-              <p className="mt-2 text-base text-slate-500">
-                {invoice.client_name} · {invoice.client_email}
+
+              <p className="mt-2 text-sm text-slate-500">
+                Cliente: <strong>{invoice.client_name}</strong>
               </p>
             </div>
 
-            <span className={getStatusClass(invoice.status)}>
-              {invoice.status || "pending"}
-            </span>
-          </div>
-
-          <div className="ui-actions mt-6">
-            <Link href={`/invoice/${invoice.id}/edit`} className="btn btn-secondary">
-              Editar
-            </Link>
-
-            <Link href={`/api/invoices/${invoice.id}/pdf`} className="btn btn-secondary">
-              PDF
-            </Link>
-
-            <SendInvoiceEmailButton
-              invoiceId={invoice.id}
-              label="Enviar email"
-              successLabel="Email enviado"
-              errorLabel="No se pudo enviar"
-            />
-
-            <DeleteInvoiceButton invoiceId={invoice.id} label="Eliminar" />
-
-            <Link href={`/api/invoices/${invoice.id}/pay`} className="btn btn-primary">
-              Pagar
-            </Link>
-
-            {invoice.public_token ? (
+            <div className="flex flex-wrap gap-3">
               <Link
-                href={`/public-invoice/${invoice.public_token}`}
+                href={`/api/invoices/${invoice.id}/pdf`}
+                target="_blank"
                 className="btn btn-secondary"
               >
-                Ver
+                Descargar PDF
               </Link>
-            ) : null}
-          </div>
-        </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className="ui-panel">
-            <h2 className="text-lg font-bold text-slate-900">Detalles</h2>
-            <div className="mt-4 space-y-2 text-sm text-slate-700">
-              <p>
-                <strong>Fecha de emisión:</strong>{" "}
-                {invoice.issue_date ? new Date(invoice.issue_date).toLocaleDateString() : "-"}
-              </p>
-              <p>
-                <strong>Fecha de vencimiento:</strong>{" "}
-                {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : "-"}
-              </p>
+              <PayInvoiceButton invoiceId={invoice.id} label="Pagar factura" />
             </div>
           </div>
+        </section>
 
-          <div className="ui-panel">
-            <h2 className="text-lg font-bold text-slate-900">Cliente</h2>
-            <div className="mt-4">
-              <p className="text-base font-semibold text-slate-900">{invoice.client_name}</p>
-              <p className="mt-1 text-sm text-slate-500">{invoice.client_email}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="ui-table-wrap mt-6">
-          <table className="ui-table">
-            <thead>
-              <tr>
-                <th>Descripción</th>
-                <th>Cant.</th>
-                <th>Precio</th>
-                <th style={{ textAlign: "right" }}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items?.map((item) => (
-                <tr key={item.id}>
-                  <td>{item.description}</td>
-                  <td>{item.quantity}</td>
-                  <td>${item.unit_price}</td>
-                  <td style={{ textAlign: "right", fontWeight: 700 }}>
-                    ${item.total}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="mt-6 ml-auto w-full max-w-md space-y-3">
-          <div className="ui-kv">
-            <span className="text-slate-500">Subtotal</span>
-            <span className="font-semibold text-slate-950">${invoice.subtotal}</span>
-          </div>
-          <div className="ui-kv">
-            <span className="text-slate-500">Impuestos</span>
-            <span className="font-semibold text-slate-950">${invoice.tax}</span>
-          </div>
-          <div
-            className="ui-kv"
-            style={{ background: "#0f172a", borderColor: "#0f172a" }}
-          >
-            <span style={{ color: "white", fontWeight: 600 }}>Total</span>
-            <span style={{ color: "white", fontWeight: 800, fontSize: 22 }}>
-              ${invoice.total}
-            </span>
-          </div>
-        </div>
-
-        {invoice.notes ? (
-          <div className="ui-panel mt-6">
-            <h2 className="text-lg font-bold text-slate-900">Notas</h2>
-            <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-600">
-              {invoice.notes}
+        {/* INFO */}
+        <section className="mt-6 grid gap-6 md:grid-cols-3">
+          <div className="ui-card p-6">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+              Cliente
+            </p>
+            <p className="mt-2 text-lg font-bold text-slate-900">
+              {invoice.client_name}
+            </p>
+            <p className="text-sm text-slate-500">
+              {invoice.client_email || "-"}
             </p>
           </div>
-        ) : null}
+
+          <div className="ui-card p-6">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+              Fechas
+            </p>
+            <p className="mt-2 text-sm text-slate-700">
+              Emisión: {invoice.issue_date || "-"}
+            </p>
+            <p className="text-sm text-slate-700">
+              Vencimiento: {invoice.due_date || "-"}
+            </p>
+          </div>
+
+          <div className="ui-card p-6">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+              Estado
+            </p>
+            <p
+              className={`mt-2 inline-block rounded-full px-3 py-1 text-sm font-bold ${
+                invoice.status === "paid"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-yellow-100 text-yellow-700"
+              }`}
+            >
+              {invoice.status || "draft"}
+            </p>
+          </div>
+        </section>
+
+        {/* ITEMS */}
+        <section className="mt-6 ui-card p-6 md:p-8">
+          <h2 className="text-xl font-black text-slate-950">
+            Desglose de materiales
+          </h2>
+
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-slate-100 text-left text-sm text-slate-600">
+                  <th className="p-3">Descripción</th>
+                  <th className="p-3">Cant.</th>
+                  <th className="p-3">Precio</th>
+                  <th className="p-3 text-right">Total</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {(items || []).map((item) => {
+                  const qty = Number(item.quantity || 1);
+                  const price = Number(item.unit_price || 0);
+                  const total = qty * price;
+
+                  return (
+                    <tr
+                      key={item.id}
+                      className="border-b border-slate-100 text-sm"
+                    >
+                      <td className="p-3">{item.description}</td>
+                      <td className="p-3">{qty}</td>
+                      <td className="p-3">{money(price)}</td>
+                      <td className="p-3 text-right font-bold">
+                        {money(total)}
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {(!items || items.length === 0) && (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="p-6 text-center text-slate-400"
+                    >
+                      No hay materiales en esta factura
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* TOTAL */}
+        <section className="mt-6 flex justify-end">
+          <div className="ui-card w-full max-w-md p-6">
+            <div className="flex justify-between text-sm text-slate-600">
+              <span>Subtotal</span>
+              <span>{money(Number(invoice.subtotal || 0))}</span>
+            </div>
+
+            <div className="mt-2 flex justify-between text-sm text-slate-600">
+              <span>Impuestos</span>
+              <span>{money(Number(invoice.tax_total || 0))}</span>
+            </div>
+
+            <div className="mt-4 flex justify-between text-lg font-extrabold text-slate-950">
+              <span>Total</span>
+              <span>{money(Number(invoice.total || 0))}</span>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
   );
