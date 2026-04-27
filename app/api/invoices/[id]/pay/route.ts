@@ -1,42 +1,28 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
-import { createServerClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
+import { stripe } from "@/lib/stripe";
 
-type RouteProps = {
-  params: Promise<{ id: string }>;
-};
+export const runtime = "nodejs";
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-if (!stripeSecretKey) {
-  throw new Error("Falta STRIPE_SECRET_KEY en .env.local");
-}
-
-const stripe = new Stripe(stripeSecretKey);
-
-export async function POST(_request: Request, { params }: RouteProps) {
+export async function GET(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
 
-    const supabase = await createServerClient();
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
-    const { data: invoice, error: invoiceError } = await supabase
+    const { data: invoice, error } = await supabaseAdmin
       .from("invoices")
       .select("*")
       .eq("id", id)
-      .eq("user_id", user.id)
       .maybeSingle();
 
-    if (invoiceError || !invoice) {
+    if (error || !invoice) {
       return NextResponse.json(
         { error: "Factura no encontrada" },
         { status: 404 }
@@ -44,89 +30,46 @@ export async function POST(_request: Request, { params }: RouteProps) {
     }
 
     const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-      "http://localhost:3000";
-
-    const invoiceNumber =
-      invoice.invoice_number ||
-      invoice.number ||
-      `INV-${String(invoice.id).slice(0, 8).toUpperCase()}`;
-
-    const currency = String(invoice.currency || "USD").toLowerCase();
-    const total = Number(invoice.total || 0);
-
-    if (!Number.isFinite(total) || total <= 0) {
-      return NextResponse.json(
-        { error: "La factura no tiene un total válido para cobrar" },
-        { status: 400 }
-      );
-    }
-
-    const unitAmount = Math.round(total * 100);
-
-    const customerEmail =
-      invoice.client_email ||
-      invoice.customer_email ||
-      invoice.email ||
-      undefined;
-
-    const clientName =
-      invoice.client_name || invoice.client || invoice.customer_name || "Client";
+      process.env.NEXT_PUBLIC_SITE_URL || "https://www.tadeoinvoice.com";
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      success_url: `${siteUrl}/invoice/${invoice.id}?paid=1&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/invoice/${invoice.id}?canceled=1`,
-      customer_email: customerEmail,
-      metadata: {
-        invoice_id: String(invoice.id),
-        user_id: String(user.id),
-        invoice_number: String(invoiceNumber),
-      },
-      payment_intent_data: {
-        metadata: {
-          invoice_id: String(invoice.id),
-          user_id: String(user.id),
-          invoice_number: String(invoiceNumber),
-        },
-      },
+      payment_method_types: ["card"],
+      customer_email: invoice.client_email || undefined,
       line_items: [
         {
           quantity: 1,
           price_data: {
-            currency,
-            unit_amount: unitAmount,
+            currency: String(invoice.currency || "USD").toLowerCase(),
             product_data: {
-              name: `Invoice ${invoiceNumber}`,
-              description: `Payment for invoice ${invoiceNumber} - ${clientName}`,
+              name: `Factura #${invoice.invoice_number || invoice.id}`,
+              description: invoice.client_name || "Invoice payment",
             },
+            unit_amount: Math.round(Number(invoice.total || 0) * 100),
           },
         },
       ],
+      metadata: {
+        type: "invoice_payment",
+        invoice_id: invoice.id,
+      },
+      success_url: `${siteUrl}/invoice/${invoice.id}?paid=success`,
+      cancel_url: `${siteUrl}/invoice/${invoice.id}?paid=cancelled`,
     });
 
-    const { error: paymentLinkError } = await supabase
+    await supabaseAdmin
       .from("invoices")
       .update({
-        payment_url: session.url,
-        stripe_session_id: session.id,
-        payment_status: "pending",
+        stripe_checkout_session_id: session.id,
       })
-      .eq("id", invoice.id)
-      .eq("user_id", user.id);
+      .eq("id", invoice.id);
 
-    if (paymentLinkError) {
-      console.error("SAVE_PAYMENT_LINK_ERROR", paymentLinkError);
-    }
-
-    return NextResponse.json({
-      url: session.url,
-      sessionId: session.id,
-    });
+    return NextResponse.redirect(session.url!);
   } catch (error) {
-    console.error("CREATE_INVOICE_PAYMENT_SESSION_ERROR", error);
+    console.error("INVOICE_PAY_ERROR", error);
+
     return NextResponse.json(
-      { error: "No se pudo crear la sesión de pago" },
+      { error: "No se pudo abrir el pago" },
       { status: 500 }
     );
   }
