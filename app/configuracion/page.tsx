@@ -63,10 +63,10 @@ export default async function ConfiguracionPage() {
 
             {/* ACTIONS */}
             <div className="flex flex-col gap-3">
-              {/* 🔥 FIX IMPORTANTE */}
               <LogoUploader userId={user.id} />
 
-              {profile?.logo_url && <DeleteLogoButton />}
+              {/* 🔥 SIEMPRE VISIBLE */}
+              <DeleteLogoButton />
             </div>
           </div>
         </section>
