@@ -24,20 +24,18 @@ export default async function ConfiguracionPage() {
       <AppHeader />
 
       <div className="ui-shell">
+        {/* HEADER */}
         <section className="ui-card p-6 md:p-8">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="ui-badge">Configuración</div>
+          <div>
+            <div className="ui-badge">Configuración</div>
 
-              <h1 className="mt-3 text-3xl font-extrabold text-slate-950 md:text-5xl">
-                Ajustes de empresa
-              </h1>
+            <h1 className="mt-3 text-3xl font-extrabold text-slate-950 md:text-5xl">
+              Ajustes de empresa
+            </h1>
 
-              <p className="mt-2 text-sm text-slate-500">
-                Personaliza tu información, logo y datos que aparecerán en las
-                facturas y PDF.
-              </p>
-            </div>
+            <p className="mt-2 text-sm text-slate-500">
+              Configura tu logo y datos que aparecerán en las facturas.
+            </p>
           </div>
         </section>
 
@@ -48,22 +46,25 @@ export default async function ConfiguracionPage() {
           </h2>
 
           <div className="mt-6 flex flex-col gap-6 md:flex-row md:items-center">
-            <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 p-6">
+            {/* PREVIEW */}
+            <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 p-6 w-48 h-32">
               {profile?.logo_url ? (
                 <img
                   src={profile.logo_url}
                   alt="Logo"
-                  className="h-24 w-auto object-contain"
+                  className="h-full w-auto object-contain"
                 />
               ) : (
                 <span className="text-sm text-slate-400">
-                  No tienes logo aún
+                  Sin logo
                 </span>
               )}
             </div>
 
+            {/* ACTIONS */}
             <div className="flex flex-col gap-3">
-              <LogoUploader />
+              {/* 🔥 FIX IMPORTANTE */}
+              <LogoUploader userId={user.id} />
 
               {profile?.logo_url && <DeleteLogoButton />}
             </div>
@@ -81,51 +82,47 @@ export default async function ConfiguracionPage() {
             method="POST"
             className="mt-6 grid gap-5 md:grid-cols-2"
           >
-            <div className="flex flex-col gap-2">
+            <div>
               <label className="text-sm font-semibold text-slate-600">
                 Nombre de la empresa
               </label>
               <input
                 name="company_name"
                 defaultValue={profile?.company_name || ""}
-                className="input"
-                placeholder="Ej: Tadeo Invoices LLC"
+                className="input mt-2"
               />
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div>
               <label className="text-sm font-semibold text-slate-600">
                 Email
               </label>
               <input
                 name="company_email"
                 defaultValue={profile?.company_email || ""}
-                className="input"
-                placeholder="email@empresa.com"
+                className="input mt-2"
               />
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div>
               <label className="text-sm font-semibold text-slate-600">
                 Teléfono
               </label>
               <input
                 name="company_phone"
                 defaultValue={profile?.company_phone || ""}
-                className="input"
-                placeholder="+1 813 000 0000"
+                className="input mt-2"
               />
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div>
               <label className="text-sm font-semibold text-slate-600">
                 Dirección
               </label>
               <input
                 name="company_address"
                 defaultValue={profile?.company_address || ""}
-                className="input"
-                placeholder="Dirección completa"
+                className="input mt-2"
               />
             </div>
 
