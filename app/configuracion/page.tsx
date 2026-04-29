@@ -34,39 +34,77 @@ export default async function ConfiguracionPage() {
             </h1>
 
             <p className="mt-2 text-sm text-slate-500">
-              Configura tu logo y datos que aparecerán en las facturas.
+              Personaliza tu logo y los datos que aparecerán en tus facturas.
             </p>
           </div>
         </section>
 
-        {/* LOGO */}
-        <section className="ui-card mt-6 p-6 md:p-8">
-          <h2 className="text-xl font-black text-slate-950">
-            Logo de la empresa
-          </h2>
+        {/* LOGO PRO UI */}
+        <section className="ui-card mt-6 overflow-hidden p-0">
+          <div className="border-b border-slate-200 bg-gradient-to-r from-slate-950 to-blue-700 p-6 md:p-8">
+            <div className="ui-badge bg-white/10 text-white">Branding</div>
 
-          <div className="mt-6 flex flex-col gap-6 md:flex-row md:items-center">
+            <h2 className="mt-4 text-3xl font-black text-white">
+              Logo de la empresa
+            </h2>
+
+            <p className="mt-2 max-w-2xl text-sm text-blue-100">
+              Este logo aparecerá en tus facturas, PDF y correos enviados a tus
+              clientes.
+            </p>
+          </div>
+
+          <div className="grid gap-6 p-6 md:grid-cols-[280px_1fr] md:p-8">
             {/* PREVIEW */}
-            <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 p-6 w-48 h-32">
-              {profile?.logo_url ? (
-                <img
-                  src={profile.logo_url}
-                  alt="Logo"
-                  className="h-full w-auto object-contain"
-                />
-              ) : (
-                <span className="text-sm text-slate-400">
-                  Sin logo
-                </span>
-              )}
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+              <div className="flex h-44 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white">
+                {profile?.logo_url ? (
+                  <img
+                    src={profile.logo_url}
+                    alt="Logo"
+                    className="max-h-32 max-w-[200px] object-contain"
+                  />
+                ) : (
+                  <div className="text-center">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl">
+                      ✦
+                    </div>
+                    <p className="mt-3 text-sm font-bold text-slate-500">
+                      Sin logo todavía
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <p className="mt-4 text-center text-xs text-slate-400">
+                PNG recomendado · fondo transparente · 500×500 px
+              </p>
             </div>
 
             {/* ACTIONS */}
-            <div className="flex flex-col gap-3">
-              <LogoUploader userId={user.id} />
+            <div className="flex flex-col justify-center">
+              <h3 className="text-xl font-black text-slate-950">
+                Sube o reemplaza tu logo
+              </h3>
 
-              {/* 🔥 SIEMPRE VISIBLE */}
-              <DeleteLogoButton />
+              <p className="mt-2 max-w-xl text-sm text-slate-500">
+                Si subes uno nuevo, reemplazará automáticamente el logo actual.
+              </p>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <LogoUploader userId={user.id} />
+                <DeleteLogoButton />
+              </div>
+
+              {profile?.logo_url ? (
+                <p className="mt-4 text-xs font-semibold text-emerald-600">
+                  Logo activo en tu cuenta
+                </p>
+              ) : (
+                <p className="mt-4 text-xs font-semibold text-amber-600">
+                  Aún no tienes logo configurado
+                </p>
+              )}
             </div>
           </div>
         </section>
