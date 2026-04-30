@@ -7,17 +7,23 @@ type Lang = "es" | "en";
 
 const translations = {
   es: {
-    pricing: "Precios",
+    dashboard: "Dashboard",
+    invoices: "Facturas",
     clients: "Clientes",
+    pricing: "Planes",
     login: "Login",
     start: "Empezar",
+    create: "Crear factura",
     menu: "Menú",
   },
   en: {
-    pricing: "Pricing",
+    dashboard: "Dashboard",
+    invoices: "Invoices",
     clients: "Clients",
+    pricing: "Pricing",
     login: "Login",
     start: "Get started",
+    create: "New invoice",
     menu: "Menu",
   },
 } as const;
@@ -43,116 +49,114 @@ export default function SiteHeader() {
 
   const t = translations[lang];
 
+  const nav = [
+    { href: "/dashboard", label: t.dashboard },
+    { href: "/invoice", label: t.invoices },
+    { href: "/clientes", label: t.clients },
+    { href: "/pricing", label: t.pricing },
+  ];
+
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 md:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/85 backdrop-blur-2xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6 lg:px-8">
+        {/* LOGO */}
         <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-sm font-bold text-white shadow-sm">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-950 to-blue-700 text-white font-black shadow-lg">
             TI
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900 md:text-base">
+          <div>
+            <p className="text-sm font-black text-slate-950">
               Tadeo Invoices
             </p>
-            <p className="hidden text-xs text-slate-500 sm:block">
-              Billing platform
+            <p className="text-xs text-slate-500 hidden sm:block">
+              SaaS Billing Platform
             </p>
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-3 md:flex">
-          <Link
-            href="/pricing"
-            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
-          >
-            {t.pricing}
-          </Link>
-          <Link
-            href="/clientes"
-            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
-          >
-            {t.clients}
-          </Link>
-          <Link
-            href="/login"
-            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
-          >
-            {t.login}
-          </Link>
+        {/* NAV DESKTOP */}
+        <nav className="hidden lg:flex items-center gap-1">
+          {nav.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="rounded-xl px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
 
+        {/* RIGHT */}
+        <div className="hidden md:flex items-center gap-2">
           <button
-            type="button"
             onClick={toggleLang}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="rounded-xl border px-3 py-2 text-sm font-bold"
           >
             {lang === "es" ? "EN" : "ES"}
           </button>
 
-          <Link
-            href="/signup"
-            className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
-          >
-            {t.start}
+          <Link href="/login" className="btn btn-secondary">
+            {t.login}
           </Link>
-        </nav>
 
+          <Link href="/invoice/new" className="btn btn-primary">
+            + {t.create}
+          </Link>
+        </div>
+
+        {/* MOBILE BUTTON */}
         <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 md:hidden"
-          aria-label="Abrir menú"
-          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+          className="md:hidden rounded-xl border px-3 py-2 text-sm font-bold"
         >
-          {t.menu}
+          {open ? "Cerrar" : t.menu}
         </button>
       </div>
 
-      {open ? (
-        <div className="border-t border-slate-200 bg-white md:hidden">
-          <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-4 py-4">
-            <Link
-              href="/pricing"
-              onClick={() => setOpen(false)}
-              className="rounded-xl px-3 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-            >
-              {t.pricing}
-            </Link>
-            <Link
-              href="/clientes"
-              onClick={() => setOpen(false)}
-              className="rounded-xl px-3 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-            >
-              {t.clients}
-            </Link>
-            <Link
-              href="/login"
-              onClick={() => setOpen(false)}
-              className="rounded-xl px-3 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-            >
-              {t.login}
-            </Link>
+      {/* MOBILE MENU */}
+      {open && (
+        <div className="md:hidden border-t bg-white">
+          <div className="flex flex-col gap-2 p-4">
+            {nav.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setOpen(false)}
+                className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-100"
+              >
+                {item.label}
+              </Link>
+            ))}
 
             <button
-              type="button"
               onClick={() => {
                 toggleLang();
                 setOpen(false);
               }}
-              className="rounded-xl border border-slate-200 px-3 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="rounded-xl border px-4 py-3 text-left text-sm font-bold"
             >
               {lang === "es" ? "English" : "Español"}
             </button>
 
             <Link
-              href="/signup"
+              href="/login"
               onClick={() => setOpen(false)}
-              className="mt-1 inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white"
+              className="btn btn-secondary w-full"
             >
-              {t.start}
+              {t.login}
+            </Link>
+
+            <Link
+              href="/invoice/new"
+              onClick={() => setOpen(false)}
+              className="btn btn-primary w-full"
+            >
+              + {t.create}
             </Link>
           </div>
         </div>
-      ) : null}
+      )}
     </header>
   );
 }
