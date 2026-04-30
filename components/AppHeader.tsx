@@ -3,16 +3,15 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 const navLinks = [
-  { href: "/", label: "Inicio" },
+  { href: "/", label: "Home" },
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/invoice", label: "Facturas" },
-  { href: "/clientes", label: "Clientes" },
-  { href: "/reportes", label: "Reportes" },
-  { href: "/configuracion", label: "Configuración" },
-  { href: "/pricing", label: "Planes" },
+  { href: "/invoice", label: "Invoices" },
+  { href: "/clientes", label: "Clients" },
+  { href: "/reportes", label: "Reports" },
+  { href: "/configuracion", label: "Settings" },
+  { href: "/pricing", label: "Pricing" },
 ];
 
 export default function AppHeader() {
@@ -26,25 +25,22 @@ export default function AppHeader() {
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/80 backdrop-blur-2xl">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 md:px-6 lg:px-8">
         
-        {/* LOGO */}
-        <Link href="/" className="group flex items-center gap-3">
-          <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-950 via-blue-900 to-blue-600 text-white font-black shadow-xl">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-950 to-blue-700 text-white font-black">
             TI
-            <span className="absolute inset-0 rounded-2xl bg-white/10 opacity-0 transition group-hover:opacity-100" />
           </div>
 
-          <div className="leading-tight">
-            <p className="text-sm font-black text-slate-950 md:text-base">
+          <div>
+            <p className="text-sm font-black text-slate-950">
               Tadeo Invoices
             </p>
-            <p className="text-xs font-medium text-slate-500">
+            <p className="text-xs text-slate-500">
               SaaS Billing Platform
             </p>
           </div>
         </Link>
 
-        {/* NAV DESKTOP */}
-        <nav className="hidden items-center rounded-2xl border border-slate-200 bg-slate-50/80 p-1 shadow-sm lg:flex">
+        <nav className="hidden lg:flex items-center gap-1">
           {navLinks.map((link) => {
             const active = isActive(link.href);
 
@@ -52,10 +48,10 @@ export default function AppHeader() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`rounded-xl px-3 py-2 text-sm font-extrabold transition ${
+                className={`rounded-xl px-3 py-2 text-sm font-bold ${
                   active
-                    ? "bg-white text-blue-700 shadow-sm"
-                    : "text-slate-600 hover:bg-white hover:text-slate-950"
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
                 {link.label}
@@ -64,63 +60,40 @@ export default function AppHeader() {
           })}
         </nav>
 
-        {/* RIGHT */}
-        <div className="hidden items-center gap-2 md:flex">
-          <LanguageSwitcher />
-
-          <Link
-            href="/invoice/new"
-            className="rounded-2xl bg-gradient-to-r from-blue-600 to-slate-950 px-5 py-3 text-sm font-black text-white shadow-xl transition hover:scale-[1.02]"
-          >
-            + Crear factura
+        <div className="hidden md:flex items-center gap-2">
+          <Link href="/invoice/new" className="btn btn-primary">
+            + Create invoice
           </Link>
         </div>
 
-        {/* MOBILE BUTTON */}
         <button
-          onClick={() => setOpen((v) => !v)}
-          className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-black md:hidden"
+          onClick={() => setOpen(!open)}
+          className="md:hidden border px-4 py-2 rounded-xl"
         >
-          {open ? "Cerrar" : "Menú"}
+          {open ? "Close" : "Menu"}
         </button>
       </div>
 
-      {/* MOBILE MENU */}
       {open && (
-        <div className="border-t border-slate-200 bg-white md:hidden">
+        <div className="md:hidden border-t bg-white">
           <div className="flex flex-col gap-2 p-4">
-            {navLinks.map((link) => {
-              const active = isActive(link.href);
-
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setOpen(false)}
-                  className={`rounded-2xl px-4 py-3 text-sm font-black ${
-                    active
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-slate-700 hover:bg-slate-100"
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-
-            <div className="mt-2 border-t pt-3">
+            {navLinks.map((link) => (
               <Link
-                href="/invoice/new"
+                key={link.href}
+                href={link.href}
                 onClick={() => setOpen(false)}
-                className="btn btn-primary w-full"
+                className="px-4 py-3 text-sm font-bold hover:bg-slate-100 rounded-xl"
               >
-                + Crear factura
+                {link.label}
               </Link>
+            ))}
 
-              <div className="mt-3">
-                <LanguageSwitcher />
-              </div>
-            </div>
+            <Link
+              href="/invoice/new"
+              className="btn btn-primary w-full"
+            >
+              + Create invoice
+            </Link>
           </div>
         </div>
       )}
