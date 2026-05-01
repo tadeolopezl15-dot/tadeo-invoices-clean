@@ -25,6 +25,7 @@ export default function AppHeader() {
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/80 backdrop-blur-2xl">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 md:px-6 lg:px-8">
         
+        {/* LOGO */}
         <Link href="/" className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-950 to-blue-700 text-white font-black">
             TI
@@ -40,6 +41,7 @@ export default function AppHeader() {
           </div>
         </Link>
 
+        {/* DESKTOP NAV */}
         <nav className="hidden lg:flex items-center gap-1">
           {navLinks.map((link) => {
             const active = isActive(link.href);
@@ -60,12 +62,14 @@ export default function AppHeader() {
           })}
         </nav>
 
+        {/* RIGHT */}
         <div className="hidden md:flex items-center gap-2">
           <Link href="/invoice/new" className="btn btn-primary">
             + Create invoice
           </Link>
         </div>
 
+        {/* MOBILE BUTTON */}
         <button
           onClick={() => setOpen(!open)}
           className="md:hidden border px-4 py-2 rounded-xl"
@@ -74,6 +78,7 @@ export default function AppHeader() {
         </button>
       </div>
 
+      {/* MOBILE MENU */}
       {open && (
         <div className="md:hidden border-t bg-white">
           <div className="flex flex-col gap-2 p-4">
@@ -90,6 +95,7 @@ export default function AppHeader() {
 
             <Link
               href="/invoice/new"
+              onClick={() => setOpen(false)}
               className="btn btn-primary w-full"
             >
               + Create invoice
