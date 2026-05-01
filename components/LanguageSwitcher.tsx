@@ -5,9 +5,12 @@ import { useLang } from "@/components/LanguageProvider";
 export default function LanguageSwitcher() {
   const { lang, toggleLang } = useLang();
 
+  const currentLang = String(lang);
+  const isSpanish = currentLang === "es";
+
   return (
     <button type="button" onClick={toggleLang} className="btn btn-secondary">
-      {lang === "es" ? "EN" : "ES"}
+      {isSpanish ? "EN" : "ES"}
     </button>
   );
 }

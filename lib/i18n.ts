@@ -1,4 +1,4 @@
-export type Lang = "en" | "es";
+export type Lang = "en";
 
 export const defaultLang: Lang = "en";
 
@@ -46,52 +46,6 @@ const translations = {
       email: "Email",
       phone: "Phone",
       address: "Address",
-    },
-  },
-
-  es: {
-    common: {
-      dashboard: "Dashboard",
-      invoices: "Facturas",
-      clients: "Clientes",
-      reports: "Reportes",
-      settings: "Configuración",
-      pricing: "Planes",
-      login: "Login",
-      signup: "Crear cuenta",
-      logout: "Salir",
-      createInvoice: "Crear factura",
-      save: "Guardar",
-      cancel: "Cancelar",
-      delete: "Eliminar",
-      send: "Enviar",
-      paid: "Pagado",
-      pending: "Pendiente",
-    },
-    invoice: {
-      new: "Nueva factura",
-      edit: "Editar factura",
-      clientName: "Nombre del cliente",
-      clientEmail: "Correo del cliente",
-      issueDate: "Fecha de emisión",
-      dueDate: "Fecha de vencimiento",
-      currency: "Moneda",
-      subtotal: "Subtotal",
-      total: "Total",
-      addItem: "Agregar ítem",
-      description: "Descripción",
-      quantity: "Cantidad",
-      price: "Precio unitario",
-    },
-    settings: {
-      title: "Configuración",
-      logo: "Logo de la empresa",
-      upload: "Subir logo",
-      delete: "Eliminar logo",
-      companyName: "Nombre de la empresa",
-      email: "Correo",
-      phone: "Teléfono",
-      address: "Dirección",
     },
   },
 };

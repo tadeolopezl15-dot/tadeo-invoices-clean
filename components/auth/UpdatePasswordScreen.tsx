@@ -6,24 +6,36 @@ import { createBrowserClient } from "@/lib/supabase/client";
 import { useLang } from "@/components/LanguageProvider";
 
 export default function UpdatePasswordScreen() {
-  const { t, lang } = useLang();
+  const { lang } = useLang();
+
+  const currentLang = String(lang);
+  const isSpanish = currentLang === "es";
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
     setMessage("");
+    setErrorMessage("");
+    setLoading(true);
 
     try {
+      if (password.length < 6) {
+        throw new Error(
+          isSpanish
+            ? "La contraseña debe tener al menos 6 caracteres."
+            : "Password must be at least 6 characters."
+        );
+      }
+
       if (password !== confirmPassword) {
         throw new Error(
-          lang === "es"
+          isSpanish
             ? "Las contraseñas no coinciden."
             : "Passwords do not match."
         );
@@ -40,109 +52,134 @@ export default function UpdatePasswordScreen() {
       }
 
       setMessage(
-        lang === "es"
-          ? "Tu contraseña fue actualizada correctamente."
-          : "Your password was updated successfully."
+        isSpanish
+          ? "Tu contraseña fue actualizada correctamente. Ya puedes iniciar sesión."
+          : "Your password has been updated successfully. You can now sign in."
       );
 
       setPassword("");
       setConfirmPassword("");
-    } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : lang === "es"
-          ? "No se pudo actualizar la contraseña."
-          : "Could not update the password.";
+    } catch (error) {
+      const fallback = isSpanish
+        ? "No pudimos actualizar tu contraseña. Abre el enlace nuevamente desde tu correo."
+        : "We could not update your password. Open the link again from your email.";
 
-      setError(msg);
+      setErrorMessage(error instanceof Error ? error.message : fallback);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold tracking-tight text-slate-950">
-        {t.common.updatePassword}
-      </h2>
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-white">
+      <div className="mx-auto flex min-h-[80vh] max-w-6xl items-center justify-center">
+        <div className="grid w-full overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.04] shadow-2xl shadow-black/40 backdrop-blur md:grid-cols-2">
+          <section className="hidden bg-gradient-to-br from-emerald-600 via-blue-600 to-slate-950 p-10 md:block">
+            <div className="flex h-full flex-col justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-100">
+                  Tadeo Invoices
+                </p>
+                <h1 className="mt-8 text-4xl font-black leading-tight">
+                  {isSpanish
+                    ? "Crea una nueva contraseña segura."
+                    : "Create a new secure password."}
+                </h1>
+                <p className="mt-5 max-w-md text-base leading-7 text-emerald-100">
+                  {isSpanish
+                    ? "Actualiza tu contraseña y vuelve a administrar tus facturas, clientes y pagos."
+                    : "Update your password and get back to managing invoices, clients, and payments."}
+                </p>
+              </div>
 
-      <p className="mt-2 text-sm leading-7 text-slate-600">
-        {lang === "es"
-          ? "Escribe tu nueva contraseña para recuperar el acceso a tu cuenta."
-          : "Enter your new password to recover access to your account."}
-      </p>
+              <div className="rounded-3xl border border-white/15 bg-white/10 p-5">
+                <p className="text-sm text-emerald-100">
+                  {isSpanish
+                    ? "Usa una contraseña fuerte con mínimo 6 caracteres."
+                    : "Use a strong password with at least 6 characters."}
+                </p>
+              </div>
+            </div>
+          </section>
 
-      {message ? (
-        <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          {message}
+          <section className="p-8 sm:p-10">
+            <div className="mx-auto max-w-md">
+              <Link
+                href="/login"
+                className="inline-flex text-sm font-semibold text-blue-300 hover:text-blue-200"
+              >
+                ← {isSpanish ? "Volver al login" : "Back to login"}
+              </Link>
+
+              <h2 className="mt-8 text-3xl font-black">
+                {isSpanish ? "Actualizar contraseña" : "Update password"}
+              </h2>
+
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                {isSpanish
+                  ? "Escribe tu nueva contraseña para recuperar el acceso a tu cuenta."
+                  : "Enter your new password to recover access to your account."}
+              </p>
+
+              <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+                <div>
+                  <label className="text-sm font-semibold text-slate-200">
+                    {isSpanish ? "Nueva contraseña" : "New password"}
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="••••••••"
+                    className="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none ring-blue-500/40 placeholder:text-slate-500 focus:ring-4"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-slate-200">
+                    {isSpanish ? "Confirmar contraseña" : "Confirm password"}
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    placeholder="••••••••"
+                    className="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none ring-blue-500/40 placeholder:text-slate-500 focus:ring-4"
+                  />
+                </div>
+
+                {message ? (
+                  <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+                    {message}
+                  </div>
+                ) : null}
+
+                {errorMessage ? (
+                  <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                    {errorMessage}
+                  </div>
+                ) : null}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full rounded-2xl bg-blue-500 px-5 py-3 font-bold text-white shadow-lg shadow-blue-500/25 transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading
+                    ? isSpanish
+                      ? "Actualizando..."
+                      : "Updating..."
+                    : isSpanish
+                      ? "Actualizar contraseña"
+                      : "Update password"}
+                </button>
+              </form>
+            </div>
+          </section>
         </div>
-      ) : null}
-
-      {error ? (
-        <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {error}
-        </div>
-      ) : null}
-
-      <form onSubmit={onSubmit} className="mt-6 space-y-5">
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            {lang === "es" ? "Nueva contraseña" : "New password"}
-          </label>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder={
-              lang === "es"
-                ? "Escribe tu nueva contraseña"
-                : "Enter your new password"
-            }
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white"
-          />
-        </div>
-
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            {lang === "es" ? "Confirmar contraseña" : "Confirm password"}
-          </label>
-          <input
-            type="password"
-            required
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder={
-              lang === "es"
-                ? "Confirma tu nueva contraseña"
-                : "Confirm your new password"
-            }
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading
-            ? lang === "es"
-              ? "Guardando..."
-              : "Saving..."
-            : lang === "es"
-            ? "Guardar contraseña"
-            : "Save password"}
-        </button>
-
-        <Link
-          href="/login"
-          className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-        >
-          {t.common.login}
-        </Link>
-      </form>
-    </div>
+      </div>
+    </main>
   );
 }

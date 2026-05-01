@@ -6,18 +6,22 @@ import { createBrowserClient } from "@/lib/supabase/client";
 import { useLang } from "@/components/LanguageProvider";
 
 export default function ForgotPasswordScreen() {
-  const { t, lang } = useLang();
+  const { lang } = useLang();
+
+  const currentLang = String(lang);
+  const isSpanish = currentLang === "es";
 
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
     setMessage("");
+    setError("");
+    setLoading(true);
 
     try {
       const supabase = createBrowserClient();
@@ -32,88 +36,126 @@ export default function ForgotPasswordScreen() {
       });
 
       if (error) {
-        throw error;
+        setError(
+          isSpanish
+            ? "No pudimos enviar el enlace. Verifica el correo e intenta otra vez."
+            : "We could not send the link. Check the email and try again."
+        );
+        return;
       }
 
       setMessage(
-        lang === "es"
+        isSpanish
           ? "Si el correo existe, te enviamos un enlace para restablecer tu contraseña."
           : "If the email exists, we sent you a link to reset your password."
       );
-    } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : lang === "es"
-          ? "No se pudo enviar el correo de recuperación."
-          : "Could not send the recovery email.";
-
-      setError(msg);
+    } catch {
+      setError(
+        isSpanish
+          ? "Ocurrió un error inesperado. Intenta nuevamente."
+          : "Something went wrong. Please try again."
+      );
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold tracking-tight text-slate-950">
-        {t.common.forgotPassword}
-      </h2>
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-white">
+      <div className="mx-auto flex min-h-[80vh] max-w-6xl items-center justify-center">
+        <div className="grid w-full overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.04] shadow-2xl shadow-black/40 backdrop-blur md:grid-cols-2">
+          <section className="hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-slate-950 p-10 md:block">
+            <div className="flex h-full flex-col justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-100">
+                  Tadeo Invoices
+                </p>
+                <h1 className="mt-8 text-4xl font-black leading-tight">
+                  {isSpanish
+                    ? "Recupera el acceso a tu cuenta."
+                    : "Recover access to your account."}
+                </h1>
+                <p className="mt-5 max-w-md text-base leading-7 text-blue-100">
+                  {isSpanish
+                    ? "Te enviaremos un enlace seguro para crear una nueva contraseña y volver a tu dashboard."
+                    : "We will send you a secure link to create a new password and return to your dashboard."}
+                </p>
+              </div>
 
-      <p className="mt-2 text-sm leading-7 text-slate-600">
-        {lang === "es"
-          ? "Escribe tu correo y te enviaremos un enlace para restablecerla."
-          : "Enter your email and we will send you a link to reset it."}
-      </p>
+              <div className="rounded-3xl border border-white/15 bg-white/10 p-5">
+                <p className="text-sm text-blue-100">
+                  {isSpanish
+                    ? "Protegido con autenticación segura de Supabase."
+                    : "Protected with secure Supabase authentication."}
+                </p>
+              </div>
+            </div>
+          </section>
 
-      {message ? (
-        <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          {message}
+          <section className="p-8 sm:p-10">
+            <div className="mx-auto max-w-md">
+              <Link
+                href="/login"
+                className="inline-flex text-sm font-semibold text-blue-300 hover:text-blue-200"
+              >
+                ← {isSpanish ? "Volver al login" : "Back to login"}
+              </Link>
+
+              <h2 className="mt-8 text-3xl font-black">
+                {isSpanish ? "Olvidé mi contraseña" : "Forgot password"}
+              </h2>
+
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                {isSpanish
+                  ? "Escribe tu correo y te enviaremos un enlace para cambiar tu contraseña."
+                  : "Enter your email and we will send you a link to change your password."}
+              </p>
+
+              <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+                <div>
+                  <label className="text-sm font-semibold text-slate-200">
+                    {isSpanish ? "Correo electrónico" : "Email address"}
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="you@example.com"
+                    className="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none ring-blue-500/40 placeholder:text-slate-500 focus:ring-4"
+                  />
+                </div>
+
+                {message ? (
+                  <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+                    {message}
+                  </div>
+                ) : null}
+
+                {error ? (
+                  <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                    {error}
+                  </div>
+                ) : null}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full rounded-2xl bg-blue-500 px-5 py-3 font-bold text-white shadow-lg shadow-blue-500/25 transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading
+                    ? isSpanish
+                      ? "Enviando..."
+                      : "Sending..."
+                    : isSpanish
+                      ? "Enviar enlace"
+                      : "Send reset link"}
+                </button>
+              </form>
+            </div>
+          </section>
         </div>
-      ) : null}
-
-      {error ? (
-        <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {error}
-        </div>
-      ) : null}
-
-      <form onSubmit={onSubmit} className="mt-6 space-y-5">
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            {t.common.email}
-          </label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="tucorreo@email.com"
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading
-            ? lang === "es"
-              ? "Enviando..."
-              : "Sending..."
-            : lang === "es"
-            ? "Enviar enlace"
-            : "Send link"}
-        </button>
-
-        <Link
-          href="/login"
-          className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-        >
-          {t.common.login}
-        </Link>
-      </form>
-    </div>
+      </div>
+    </main>
   );
 }
