@@ -2,14 +2,12 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useLanguage } from "@/components/LanguageProvider";
 
 type Invoice = {
   id: string;
   invoice_number?: string | null;
   client_name?: string | null;
   client_email?: string | null;
-  company_name?: string | null;
   status?: string | null;
   currency?: string | null;
   total?: number | null;
@@ -18,221 +16,187 @@ type Invoice = {
   public_token?: string | null;
 };
 
-type Props = {
+export default function InvoiceListScreen({
+  invoices,
+}: {
   invoices: Invoice[];
-};
-
-function money(value: number | null | undefined, currency = "USD") {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-  }).format(Number(value || 0));
-}
-
-function formatDate(date?: string | null) {
-  if (!date) return "—";
-  return new Date(date).toLocaleDateString("es-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-export default function InvoiceListScreen({ invoices }: Props) {
-  const { t } = useLanguage();
+}) {
   const [query, setQuery] = useState("");
 
-  const filteredInvoices = useMemo(() => {
-    const q = query.toLowerCase().trim();
+  function money(value: number | null | undefined, currency = "USD") {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+    }).format(Number(value || 0));
+  }
 
-    if (!q) return invoices;
+  function formatDate(date?: string | null) {
+    if (!date) return "—";
+    return new Date(date).toLocaleDateString("es-US");
+  }
 
-    return invoices.filter((invoice) => {
-      return (
-        invoice.invoice_number?.toLowerCase().includes(q) ||
-        invoice.client_name?.toLowerCase().includes(q) ||
-        invoice.client_email?.toLowerCase().includes(q) ||
-        invoice.status?.toLowerCase().includes(q)
-      );
-    });
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase();
+    return invoices.filter((i) =>
+      `${i.invoice_number} ${i.client_name} ${i.client_email} ${i.status}`
+        .toLowerCase()
+        .includes(q)
+    );
   }, [invoices, query]);
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-8 text-white">
+    <main className="min-h-screen bg-[#020617] px-4 py-8 text-white">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-cyan-300">
-              Tadeo Invoices
-            </p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight">
-              Facturas
-            </h1>
-            <p className="mt-2 text-sm text-slate-400">
-              Ver, editar, descargar PDF y enviar facturas a tus clientes.
-            </p>
-          </div>
+
+        {/* HEADER */}
+        <div className="mb-8 rounded-3xl border border-white/10 bg-[#020617] p-6 shadow-2xl">
+          <p className="text-sm font-semibold text-cyan-300">
+            Tadeo Invoices
+          </p>
+
+          <h1 className="mt-2 text-4xl font-black">Facturas</h1>
+
+          <p className="mt-2 text-slate-400">
+            Ver, editar, descargar PDF y enviar facturas a tus clientes.
+          </p>
 
           <Link
             href="/invoice/new"
-            className="rounded-2xl bg-cyan-400 px-5 py-3 text-center font-bold text-slate-950 shadow-lg shadow-cyan-500/20 hover:bg-cyan-300"
+            className="mt-6 inline-block w-full rounded-2xl bg-cyan-500 px-6 py-4 text-center font-black text-slate-950 hover:bg-cyan-400"
           >
             + Nueva factura
           </Link>
         </div>
 
-        <div className="mb-6 rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+        {/* BUSCAR */}
+        <div className="mb-6 rounded-3xl border border-white/10 bg-[#020617] p-4">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar por cliente, número, email o estado..."
-            className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-cyan-400"
+            className="w-full rounded-2xl border border-white/10 bg-[#020617] px-4 py-4 text-white outline-none placeholder:text-slate-500"
           />
         </div>
 
-        <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] shadow-2xl">
-          {filteredInvoices.length === 0 ? (
-            <div className="p-10 text-center">
-              <h2 className="text-xl font-bold">No hay facturas</h2>
-              <p className="mt-2 text-slate-400">
-                Crea tu primera factura para verla aquí.
-              </p>
+        {/* TABLA */}
+        <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#020617] shadow-2xl">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px]">
+              <thead className="text-xs uppercase text-slate-400">
+                <tr>
+                  <th className="px-6 py-4 text-left">Fecha</th>
+                  <th className="px-6 py-4 text-left">Vence</th>
+                  <th className="px-6 py-4 text-left">Estado</th>
+                  <th className="px-6 py-4 text-left">Total</th>
+                  <th className="px-6 py-4 text-right">Acciones</th>
+                </tr>
+              </thead>
 
-              <Link
-                href="/invoice/new"
-                className="mt-6 inline-flex rounded-2xl bg-cyan-400 px-5 py-3 font-bold text-slate-950 hover:bg-cyan-300"
-              >
-                Crear factura
-              </Link>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1050px] text-left">
-                <thead className="border-b border-white/10 bg-white/[0.03] text-xs uppercase tracking-wide text-slate-400">
-                  <tr>
-                    <th className="px-5 py-4">Factura</th>
-                    <th className="px-5 py-4">Cliente</th>
-                    <th className="px-5 py-4">Fecha</th>
-                    <th className="px-5 py-4">Vence</th>
-                    <th className="px-5 py-4">Estado</th>
-                    <th className="px-5 py-4 text-right">Total</th>
-                    <th className="px-5 py-4 text-right">Acciones</th>
-                  </tr>
-                </thead>
+              <tbody className="divide-y divide-white/10">
+                {filtered.map((inv) => {
+                  const pdfUrl = `/api/invoices/${inv.id}/pdf`;
+                  const publicUrl = inv.public_token
+                    ? `/public-invoice/${inv.public_token}`
+                    : `/invoice/${inv.id}`;
 
-                <tbody className="divide-y divide-white/10">
-                  {filteredInvoices.map((invoice) => {
-                    const pdfUrl = `/api/invoices/${invoice.id}/pdf`;
-                    const emailUrl = `/invoice/${invoice.id}/email`;
-                    const viewUrl = `/invoice/${invoice.id}`;
-                    const editUrl = `/invoice/${invoice.id}/edit`;
-                    const publicUrl = invoice.public_token
-                      ? `/public-invoice/${invoice.public_token}`
-                      : `/invoice/${invoice.id}`;
+                  return (
+                    <tr key={inv.id}>
+                      <td className="px-6 py-5">
+                        {formatDate(inv.issue_date)}
+                      </td>
 
-                    return (
-                      <tr key={invoice.id} className="hover:bg-white/[0.03]">
-                        <td className="px-5 py-5">
-                          <div className="font-bold text-white">
-                            {invoice.invoice_number || "Sin número"}
-                          </div>
-                          <div className="mt-1 text-xs text-slate-500">
-                            ID: {invoice.id.slice(0, 8)}
-                          </div>
-                        </td>
+                      <td className="px-6 py-5">
+                        {formatDate(inv.due_date)}
+                      </td>
 
-                        <td className="px-5 py-5">
-                          <div className="font-semibold">
-                            {invoice.client_name || "Sin cliente"}
-                          </div>
-                          <div className="mt-1 text-xs text-slate-400">
-                            {invoice.client_email || "Sin email"}
-                          </div>
-                        </td>
+                      <td className="px-6 py-5">
+                        <span className="rounded-full bg-yellow-500/20 px-3 py-1 text-xs font-bold text-yellow-400">
+                          {inv.status || "pendiente"}
+                        </span>
+                      </td>
 
-                        <td className="px-5 py-5 text-sm text-slate-300">
-                          {formatDate(invoice.issue_date)}
-                        </td>
+                      <td className="px-6 py-5 font-black text-cyan-400">
+                        {money(inv.total, inv.currency || "USD")}
+                      </td>
 
-                        <td className="px-5 py-5 text-sm text-slate-300">
-                          {formatDate(invoice.due_date)}
-                        </td>
+                      <td className="px-6 py-5 text-right">
+                        <div className="flex flex-wrap justify-end gap-2">
 
-                        <td className="px-5 py-5">
-                          <span
-                            className={
-                              invoice.status === "paid"
-                                ? "rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-300"
-                                : "rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-bold text-amber-300"
-                            }
-                          >
-                            {invoice.status === "paid" ? "Pagada" : "Pendiente"}
-                          </span>
-                        </td>
+                          <Link href={`/invoice/${inv.id}`} className="btn">
+                            Ver
+                          </Link>
 
-                        <td className="px-5 py-5 text-right font-black text-cyan-300">
-                          {money(invoice.total, invoice.currency || "USD")}
-                        </td>
+                          <Link href={`/invoice/${inv.id}/edit`} className="btn">
+                            Editar
+                          </Link>
 
-                        <td className="px-5 py-5">
-                          <div className="flex flex-wrap justify-end gap-2">
-                            <Link
-                              href={viewUrl}
-                              className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-white hover:bg-white/10"
-                            >
-                              Ver
-                            </Link>
+                          <a href={pdfUrl} target="_blank" className="btn-purple">
+                            PDF
+                          </a>
 
-                            <Link
-                              href={editUrl}
-                              className="rounded-xl border border-blue-400/30 bg-blue-400/10 px-3 py-2 text-xs font-bold text-blue-200 hover:bg-blue-400/20"
-                            >
-                              Editar
-                            </Link>
+                          <a href={pdfUrl} download className="btn-cyan">
+                            Descargar
+                          </a>
 
-                            <a
-                              href={pdfUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="rounded-xl border border-purple-400/30 bg-purple-400/10 px-3 py-2 text-xs font-bold text-purple-200 hover:bg-purple-400/20"
-                            >
-                              PDF
-                            </a>
+                          <Link href={`/invoice/${inv.id}/email`} className="btn-green">
+                            Email
+                          </Link>
 
-                            <a
-                              href={pdfUrl}
-                              download
-                              className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-400/20"
-                            >
-                              Descargar
-                            </a>
+                          <a href={publicUrl} target="_blank" className="btn">
+                            Link público
+                          </a>
 
-                            <Link
-                              href={emailUrl}
-                              className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-400/20"
-                            >
-                              Email
-                            </Link>
-
-                            <a
-                              href={publicUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/10"
-                            >
-                              Link público
-                            </a>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
+
+      <style jsx>{`
+        .btn {
+          border-radius: 0.75rem;
+          padding: 0.5rem 0.75rem;
+          font-size: 0.75rem;
+          font-weight: 800;
+          border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .btn:hover {
+          background: rgba(255,255,255,0.1);
+        }
+
+        .btn-purple {
+          background: rgba(168,85,247,0.15);
+          color: #c084fc;
+          border-radius: 0.75rem;
+          padding: 0.5rem 0.75rem;
+          font-size: 0.75rem;
+          font-weight: 800;
+        }
+
+        .btn-cyan {
+          background: rgba(34,211,238,0.15);
+          color: #22d3ee;
+          border-radius: 0.75rem;
+          padding: 0.5rem 0.75rem;
+          font-size: 0.75rem;
+          font-weight: 800;
+        }
+
+        .btn-green {
+          background: rgba(16,185,129,0.15);
+          color: #34d399;
+          border-radius: 0.75rem;
+          padding: 0.5rem 0.75rem;
+          font-size: 0.75rem;
+          font-weight: 800;
+        }
+      `}</style>
     </main>
   );
 }
