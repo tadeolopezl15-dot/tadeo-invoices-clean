@@ -1,20 +1,10 @@
-import "./globals.css";
 import type { Metadata } from "next";
+import "./globals.css";
+import { LanguageProvider } from "@/components/LanguageProvider";
 
 export const metadata: Metadata = {
   title: "Tadeo Invoices",
-  description: "Create invoices, manage clients, and track payments.",
-  manifest: "/manifest.json",
-  themeColor: "#2563eb",
-  appleWebApp: {
-    capable: true,
-    title: "Tadeo Invoices",
-    statusBarStyle: "black-translucent",
-  },
-  icons: {
-    icon: "/icon-192.png",
-    apple: "/icon-192.png",
-  },
+  description: "Professional invoices and billing platform",
 };
 
 export default function RootLayout({
@@ -23,9 +13,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="bg-slate-950 text-white">
-        {children}
+    <html lang="es" suppressHydrationWarning>
+      <body>
+        <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>
   );

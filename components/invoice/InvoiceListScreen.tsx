@@ -1,173 +1,238 @@
 "use client";
 
 import Link from "next/link";
-import { useLang } from "@/components/LanguageProvider";
+import { useMemo, useState } from "react";
+import { useLanguage } from "@/components/LanguageProvider";
 
 type Invoice = {
   id: string;
   invoice_number?: string | null;
-  company_name?: string | null;
   client_name?: string | null;
-  customer_name?: string | null;
-  total?: number | null;
-  currency?: string | null;
+  client_email?: string | null;
+  company_name?: string | null;
   status?: string | null;
+  currency?: string | null;
+  total?: number | null;
   issue_date?: string | null;
-  created_at?: string | null;
+  due_date?: string | null;
+  public_token?: string | null;
 };
 
 type Props = {
   invoices: Invoice[];
 };
 
-function formatMoney(value?: number | null, currency?: string | null) {
+function money(value: number | null | undefined, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: currency || "USD",
+    currency,
   }).format(Number(value || 0));
 }
 
-function formatDate(value?: string | null) {
-  if (!value) return "—";
-
-  try {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "2-digit",
-      year: "numeric",
-    }).format(new Date(value));
-  } catch {
-    return "—";
-  }
+function formatDate(date?: string | null) {
+  if (!date) return "—";
+  return new Date(date).toLocaleDateString("es-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 export default function InvoiceListScreen({ invoices }: Props) {
-  const { t, lang } = useLang();
-  const isSpanish = String(lang) === "es";
+  const { t } = useLanguage();
+  const [query, setQuery] = useState("");
 
-  function getStatusLabel(status?: string | null) {
-    const value = String(status || "").toLowerCase();
+  const filteredInvoices = useMemo(() => {
+    const q = query.toLowerCase().trim();
 
-    if (value === "paid") return t.common.paid;
-    if (value === "canceled" || value === "cancelled") {
-      return isSpanish ? "Cancelada" : "Canceled";
-    }
+    if (!q) return invoices;
 
-    return t.common.pending;
-  }
-
-  function getClientName(invoice: Invoice) {
-    return (
-      invoice.client_name ||
-      invoice.customer_name ||
-      invoice.company_name ||
-      (isSpanish ? "Cliente sin nombre" : "Unnamed client")
-    );
-  }
+    return invoices.filter((invoice) => {
+      return (
+        invoice.invoice_number?.toLowerCase().includes(q) ||
+        invoice.client_name?.toLowerCase().includes(q) ||
+        invoice.client_email?.toLowerCase().includes(q) ||
+        invoice.status?.toLowerCase().includes(q)
+      );
+    });
+  }, [invoices, query]);
 
   return (
-    <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/60">
-      <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-blue-600">
-            Tadeo Invoices
-          </p>
-          <h2 className="mt-1 text-2xl font-black text-slate-950">
-            {t.common.invoices}
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            {isSpanish
-              ? "Administra, revisa y abre tus facturas."
-              : "Manage, review, and open your invoices."}
-          </p>
-        </div>
-
-        <Link
-          href="/invoice/new"
-          className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
-        >
-          + {t.common.createInvoice}
-        </Link>
-      </div>
-
-      {invoices?.length ? (
-        <div className="mt-5 overflow-hidden rounded-2xl border border-slate-100">
-          <div className="hidden grid-cols-12 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 md:grid">
-            <div className="col-span-3">
-              {isSpanish ? "Factura" : "Invoice"}
-            </div>
-            <div className="col-span-3">
-              {isSpanish ? "Cliente" : "Client"}
-            </div>
-            <div className="col-span-2">
-              {isSpanish ? "Fecha" : "Date"}
-            </div>
-            <div className="col-span-2">
-              {isSpanish ? "Estado" : "Status"}
-            </div>
-            <div className="col-span-2 text-right">
-              {isSpanish ? "Total" : "Total"}
-            </div>
+    <main className="min-h-screen bg-slate-950 px-4 py-8 text-white">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-8 flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-cyan-300">
+              Tadeo Invoices
+            </p>
+            <h1 className="mt-2 text-3xl font-black tracking-tight">
+              Facturas
+            </h1>
+            <p className="mt-2 text-sm text-slate-400">
+              Ver, editar, descargar PDF y enviar facturas a tus clientes.
+            </p>
           </div>
-
-          <div className="divide-y divide-slate-100">
-            {invoices.map((invoice) => (
-              <Link
-                key={invoice.id}
-                href={`/invoice/${invoice.id}`}
-                className="grid gap-3 px-4 py-4 transition hover:bg-slate-50 md:grid-cols-12 md:items-center"
-              >
-                <div className="md:col-span-3">
-                  <p className="font-bold text-slate-950">
-                    {invoice.invoice_number || `INV-${invoice.id.slice(0, 8)}`}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500 md:hidden">
-                    {formatDate(invoice.issue_date || invoice.created_at)}
-                  </p>
-                </div>
-
-                <div className="md:col-span-3">
-                  <p className="text-sm font-semibold text-slate-700">
-                    {getClientName(invoice)}
-                  </p>
-                </div>
-
-                <div className="hidden text-sm text-slate-500 md:col-span-2 md:block">
-                  {formatDate(invoice.issue_date || invoice.created_at)}
-                </div>
-
-                <div className="md:col-span-2">
-                  <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
-                    {getStatusLabel(invoice.status)}
-                  </span>
-                </div>
-
-                <div className="font-black text-slate-950 md:col-span-2 md:text-right">
-                  {formatMoney(invoice.total, invoice.currency)}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="mt-6 rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
-          <h3 className="text-xl font-black text-slate-950">
-            {isSpanish ? "No tienes facturas todavía" : "No invoices yet"}
-          </h3>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-            {isSpanish
-              ? "Crea tu primera factura profesional y empieza a enviarla a tus clientes."
-              : "Create your first professional invoice and start sending it to your clients."}
-          </p>
 
           <Link
             href="/invoice/new"
-            className="mt-6 inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+            className="rounded-2xl bg-cyan-400 px-5 py-3 text-center font-bold text-slate-950 shadow-lg shadow-cyan-500/20 hover:bg-cyan-300"
           >
-            + {t.common.createInvoice}
+            + Nueva factura
           </Link>
         </div>
-      )}
-    </div>
+
+        <div className="mb-6 rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por cliente, número, email o estado..."
+            className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-cyan-400"
+          />
+        </div>
+
+        <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] shadow-2xl">
+          {filteredInvoices.length === 0 ? (
+            <div className="p-10 text-center">
+              <h2 className="text-xl font-bold">No hay facturas</h2>
+              <p className="mt-2 text-slate-400">
+                Crea tu primera factura para verla aquí.
+              </p>
+
+              <Link
+                href="/invoice/new"
+                className="mt-6 inline-flex rounded-2xl bg-cyan-400 px-5 py-3 font-bold text-slate-950 hover:bg-cyan-300"
+              >
+                Crear factura
+              </Link>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1050px] text-left">
+                <thead className="border-b border-white/10 bg-white/[0.03] text-xs uppercase tracking-wide text-slate-400">
+                  <tr>
+                    <th className="px-5 py-4">Factura</th>
+                    <th className="px-5 py-4">Cliente</th>
+                    <th className="px-5 py-4">Fecha</th>
+                    <th className="px-5 py-4">Vence</th>
+                    <th className="px-5 py-4">Estado</th>
+                    <th className="px-5 py-4 text-right">Total</th>
+                    <th className="px-5 py-4 text-right">Acciones</th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-white/10">
+                  {filteredInvoices.map((invoice) => {
+                    const pdfUrl = `/api/invoices/${invoice.id}/pdf`;
+                    const emailUrl = `/invoice/${invoice.id}/email`;
+                    const viewUrl = `/invoice/${invoice.id}`;
+                    const editUrl = `/invoice/${invoice.id}/edit`;
+                    const publicUrl = invoice.public_token
+                      ? `/public-invoice/${invoice.public_token}`
+                      : `/invoice/${invoice.id}`;
+
+                    return (
+                      <tr key={invoice.id} className="hover:bg-white/[0.03]">
+                        <td className="px-5 py-5">
+                          <div className="font-bold text-white">
+                            {invoice.invoice_number || "Sin número"}
+                          </div>
+                          <div className="mt-1 text-xs text-slate-500">
+                            ID: {invoice.id.slice(0, 8)}
+                          </div>
+                        </td>
+
+                        <td className="px-5 py-5">
+                          <div className="font-semibold">
+                            {invoice.client_name || "Sin cliente"}
+                          </div>
+                          <div className="mt-1 text-xs text-slate-400">
+                            {invoice.client_email || "Sin email"}
+                          </div>
+                        </td>
+
+                        <td className="px-5 py-5 text-sm text-slate-300">
+                          {formatDate(invoice.issue_date)}
+                        </td>
+
+                        <td className="px-5 py-5 text-sm text-slate-300">
+                          {formatDate(invoice.due_date)}
+                        </td>
+
+                        <td className="px-5 py-5">
+                          <span
+                            className={
+                              invoice.status === "paid"
+                                ? "rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-300"
+                                : "rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-bold text-amber-300"
+                            }
+                          >
+                            {invoice.status === "paid" ? "Pagada" : "Pendiente"}
+                          </span>
+                        </td>
+
+                        <td className="px-5 py-5 text-right font-black text-cyan-300">
+                          {money(invoice.total, invoice.currency || "USD")}
+                        </td>
+
+                        <td className="px-5 py-5">
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <Link
+                              href={viewUrl}
+                              className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-white hover:bg-white/10"
+                            >
+                              Ver
+                            </Link>
+
+                            <Link
+                              href={editUrl}
+                              className="rounded-xl border border-blue-400/30 bg-blue-400/10 px-3 py-2 text-xs font-bold text-blue-200 hover:bg-blue-400/20"
+                            >
+                              Editar
+                            </Link>
+
+                            <a
+                              href={pdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-xl border border-purple-400/30 bg-purple-400/10 px-3 py-2 text-xs font-bold text-purple-200 hover:bg-purple-400/20"
+                            >
+                              PDF
+                            </a>
+
+                            <a
+                              href={pdfUrl}
+                              download
+                              className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-400/20"
+                            >
+                              Descargar
+                            </a>
+
+                            <Link
+                              href={emailUrl}
+                              className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-400/20"
+                            >
+                              Email
+                            </Link>
+
+                            <a
+                              href={publicUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/10"
+                            >
+                              Link público
+                            </a>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </main>
   );
 }

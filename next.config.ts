@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 import withPWAInit from "next-pwa";
 
-// Inicializar plugin PWA
 const withPWA = withPWAInit({
   dest: "public",
   register: true,
@@ -11,12 +10,8 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-
-  // Opcional pero recomendado para producción
-  experimental: {
-    typedRoutes: true,
-  },
+  typedRoutes: true,
+  turbopack: {},
 };
 
-// Export final con PWA activado
 export default withPWA(nextConfig);
