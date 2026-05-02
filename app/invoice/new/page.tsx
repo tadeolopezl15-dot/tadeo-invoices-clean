@@ -118,10 +118,7 @@ export default function NewInvoicePage() {
       .insert(fallbackItems);
 
     if (fallbackError) {
-      console.error("ITEMS_ERROR:", fallbackError);
-      throw new Error(
-        fallbackError.message || "No se pudieron guardar los productos."
-      );
+      throw new Error("Failed to save items.");
     }
   }
 
@@ -134,17 +131,14 @@ export default function NewInvoicePage() {
 
       const {
         data: { user },
-        error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError || !user) {
-        throw new Error("No estás logueado. Entra otra vez a tu cuenta.");
-      }
+      if (!user) throw new Error("You are not logged in.");
 
-      if (!companyName.trim()) throw new Error("Escribe el nombre de tu compañía.");
-      if (!companyEmail.trim()) throw new Error("Escribe el email de tu compañía.");
-      if (!clientName.trim()) throw new Error("Escribe el nombre del cliente.");
-      if (!invoiceNumber.trim()) throw new Error("Falta el número de factura.");
+      if (!companyName.trim()) throw new Error("Enter your company name.");
+      if (!companyEmail.trim()) throw new Error("Enter your company email.");
+      if (!clientName.trim()) throw new Error("Enter client name.");
+      if (!invoiceNumber.trim()) throw new Error("Missing invoice number.");
 
       const invoicePayload = {
         user_id: user.id,
@@ -171,12 +165,7 @@ export default function NewInvoicePage() {
         .single();
 
       if (invoiceError || !invoice) {
-        console.error("INVOICE_ERROR:", invoiceError);
-        throw new Error(
-          invoiceError?.message ||
-            invoiceError?.details ||
-            "No se pudo crear la factura."
-        );
+        throw new Error("Failed to create invoice.");
       }
 
       await insertItems(invoice.id);
@@ -184,8 +173,7 @@ export default function NewInvoicePage() {
       router.push(`/invoice/${invoice.id}`);
       router.refresh();
     } catch (err: any) {
-      console.error("CREATE_INVOICE_ERROR:", err);
-      setError(err?.message || "Error creando la factura.");
+      setError(err?.message || "Error creating invoice.");
     } finally {
       setLoading(false);
     }
@@ -194,280 +182,65 @@ export default function NewInvoicePage() {
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-white">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl">
-          <p className="text-sm font-semibold text-cyan-300">Tadeo Invoices</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight">
-            Crear nueva factura
-          </h1>
-          <p className="mt-2 text-sm text-slate-400">
-            Completa los datos, agrega productos o servicios y guarda la factura.
+
+        <div className="mb-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6">
+          <p className="text-cyan-300">Tadeo Invoices</p>
+          <h1 className="text-3xl font-bold mt-2">Create New Invoice</h1>
+          <p className="text-slate-400 mt-2">
+            Fill in details, add products or services, and save your invoice.
           </p>
         </div>
 
         {error && (
-          <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
-            {error}
-          </div>
+          <div className="mb-6 text-red-400">{error}</div>
         )}
 
         <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[1fr_360px]">
+
+          {/* LEFT */}
           <section className="space-y-6">
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
-              <h2 className="mb-5 text-xl font-semibold">Datos principales</h2>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Nombre de tu compañía">
-                  <input
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    className="input"
-                    placeholder="Tadeo Invoices LLC"
-                  />
-                </Field>
+            <div className="p-6 bg-white/[0.04] rounded-3xl">
+              <h2 className="mb-4 font-bold">Main Details</h2>
 
-                <Field label="Email de tu compañía">
-                  <input
-                    value={companyEmail}
-                    onChange={(e) => setCompanyEmail(e.target.value)}
-                    className="input"
-                    placeholder="billing@tadeoinvoice.com"
-                    type="email"
-                  />
-                </Field>
-
-                <Field label="Cliente">
-                  <input
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    className="input"
-                    placeholder="Nombre del cliente"
-                  />
-                </Field>
-
-                <Field label="Email del cliente">
-                  <input
-                    value={clientEmail}
-                    onChange={(e) => setClientEmail(e.target.value)}
-                    className="input"
-                    placeholder="cliente@email.com"
-                    type="email"
-                  />
-                </Field>
-
-                <Field label="Número de factura">
-                  <input
-                    value={invoiceNumber}
-                    onChange={(e) => setInvoiceNumber(e.target.value)}
-                    className="input"
-                  />
-                </Field>
-
-                <Field label="Fecha de emisión">
-                  <input
-                    value={issueDate}
-                    onChange={(e) => setIssueDate(e.target.value)}
-                    className="input"
-                    type="date"
-                  />
-                </Field>
-
-                <Field label="Fecha de vencimiento">
-                  <input
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    className="input"
-                    type="date"
-                  />
-                </Field>
-
-                <Field label="Tax %">
-                  <input
-                    value={taxRate}
-                    onChange={(e) => setTaxRate(Number(e.target.value))}
-                    className="input"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                  />
-                </Field>
-              </div>
+              <input placeholder="Company Name" onChange={(e)=>setCompanyName(e.target.value)} className="input"/>
+              <input placeholder="Company Email" onChange={(e)=>setCompanyEmail(e.target.value)} className="input"/>
+              <input placeholder="Client Name" onChange={(e)=>setClientName(e.target.value)} className="input"/>
+              <input placeholder="Client Email" onChange={(e)=>setClientEmail(e.target.value)} className="input"/>
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
-              <div className="mb-5 flex items-center justify-between gap-4">
-                <h2 className="text-xl font-semibold">Productos / servicios</h2>
-                <button
-                  type="button"
-                  onClick={addItem}
-                  className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-cyan-300"
-                >
-                  + Agregar
-                </button>
-              </div>
+            <div className="p-6 bg-white/[0.04] rounded-3xl">
+              <h2 className="mb-4 font-bold">Items</h2>
 
-              <div className="space-y-4">
-                {items.map((item, index) => (
-                  <div
-                    key={index}
-                    className="grid gap-3 rounded-2xl border border-white/10 bg-slate-950/50 p-4 md:grid-cols-[1fr_100px_130px_100px]"
-                  >
-                    <Field label="Descripción">
-                      <input
-                        value={item.description}
-                        onChange={(e) =>
-                          updateItem(index, "description", e.target.value)
-                        }
-                        className="input"
-                        placeholder="Servicio, producto o trabajo"
-                      />
-                    </Field>
+              {items.map((item, i) => (
+                <div key={i} className="flex gap-2 mb-2">
+                  <input placeholder="Description" onChange={(e)=>updateItem(i,"description",e.target.value)} className="input"/>
+                  <input type="number" onChange={(e)=>updateItem(i,"quantity",e.target.value)} className="input"/>
+                  <input type="number" onChange={(e)=>updateItem(i,"unit_price",e.target.value)} className="input"/>
+                </div>
+              ))}
 
-                    <Field label="Cantidad">
-                      <input
-                        value={item.quantity}
-                        onChange={(e) =>
-                          updateItem(index, "quantity", e.target.value)
-                        }
-                        className="input"
-                        type="number"
-                        min="0"
-                        step="1"
-                      />
-                    </Field>
-
-                    <Field label="Precio">
-                      <input
-                        value={item.unit_price}
-                        onChange={(e) =>
-                          updateItem(index, "unit_price", e.target.value)
-                        }
-                        className="input"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                      />
-                    </Field>
-
-                    <div className="flex flex-col justify-end">
-                      <p className="mb-2 text-xs text-slate-400">Total</p>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold">
-                          {money(item.quantity * item.unit_price)}
-                        </span>
-                        {items.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeItem(index)}
-                            className="text-sm text-red-300 hover:text-red-200"
-                          >
-                            Eliminar
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <button type="button" onClick={addItem}>+ Add</button>
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
-              <Field label="Notas">
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="input min-h-[120px] resize-none"
-                  placeholder="Gracias por su negocio..."
-                />
-              </Field>
-            </div>
           </section>
 
-          <aside className="h-fit rounded-3xl border border-white/10 bg-white/[0.04] p-6">
-            <h2 className="text-xl font-semibold">Resumen</h2>
+          {/* RIGHT */}
+          <aside className="p-6 bg-white/[0.04] rounded-3xl">
+            <h2 className="font-bold mb-4">Summary</h2>
 
-            <div className="mt-6 space-y-4 text-sm">
-              <Row label="Subtotal" value={money(subtotal)} />
-              <Row label={`Tax ${taxRate}%`} value={money(taxTotal)} />
-              <div className="h-px bg-white/10" />
-              <Row label="Total" value={money(total)} strong />
-            </div>
+            <p>Subtotal: {money(subtotal)}</p>
+            <p>Tax: {money(taxTotal)}</p>
+            <p>Total: {money(total)}</p>
 
-            <button
-              disabled={loading}
-              className="mt-8 w-full rounded-2xl bg-cyan-400 px-5 py-4 font-bold text-slate-950 shadow-lg shadow-cyan-500/20 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? "Guardando..." : "Crear factura"}
+            <button className="mt-6 w-full bg-cyan-400 text-black p-3 rounded-xl">
+              {loading ? "Saving..." : "Create Invoice"}
             </button>
 
-            <button
-              type="button"
-              onClick={() => router.push("/invoice")}
-              className="mt-3 w-full rounded-2xl border border-white/10 px-5 py-4 font-semibold text-white hover:bg-white/10"
-            >
-              Cancelar
-            </button>
           </aside>
+
         </form>
       </div>
-
-      <style jsx>{`
-        .input {
-          width: 100%;
-          border-radius: 1rem;
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          background: rgba(15, 23, 42, 0.75);
-          padding: 0.85rem 1rem;
-          color: white;
-          outline: none;
-        }
-
-        .input:focus {
-          border-color: rgba(34, 211, 238, 0.7);
-          box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1);
-        }
-
-        .input::placeholder {
-          color: rgb(100, 116, 139);
-        }
-      `}</style>
     </main>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
-
-function Row({
-  label,
-  value,
-  strong,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className={strong ? "text-lg font-bold" : "text-slate-400"}>
-        {label}
-      </span>
-      <span className={strong ? "text-2xl font-black text-cyan-300" : "font-semibold"}>
-        {value}
-      </span>
-    </div>
   );
 }
