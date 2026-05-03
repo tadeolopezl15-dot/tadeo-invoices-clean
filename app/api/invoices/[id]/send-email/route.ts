@@ -19,7 +19,9 @@ export async function POST(
   try {
     const { id } = await params;
 
-    if (!process.env.RESEND_API_KEY) {
+    const resendApiKey = process.env.RESEND_API_KEY;
+
+    if (!resendApiKey) {
       return NextResponse.json(
         { error: "Missing RESEND_API_KEY in Vercel." },
         { status: 500 }
@@ -33,7 +35,7 @@ export async function POST(
       );
     }
 
-    const resend = new Resend(process.env.RESEND_API_KEY);
+    const resend = new Resend(resendApiKey);
 
     const body = await req.json();
 
@@ -79,13 +81,10 @@ export async function POST(
       ? `${siteUrl}/public-invoice/${invoice.public_token}`
       : `${siteUrl}/invoice/${invoice.id}`;
 
-    const pdfResponse = await fetch(pdfUrl, {
-      cache: "no-store",
-    });
+    const pdfResponse = await fetch(pdfUrl, { cache: "no-store" });
 
     if (!pdfResponse.ok) {
       const text = await pdfResponse.text();
-
       console.error("PDF_ATTACHMENT_ERROR:", text);
 
       return NextResponse.json(
