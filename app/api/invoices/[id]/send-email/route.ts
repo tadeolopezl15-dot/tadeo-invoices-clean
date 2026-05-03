@@ -20,14 +20,31 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
 
     const to = String(body.to || "").trim();
     const subject = String(body.subject || "").trim();
     const message = String(body.message || "").trim();
 
+    if (!process.env.RESEND_API_KEY) {
+      return NextResponse.json(
+        { error: "Missing RESEND_API_KEY." },
+        { status: 500 }
+      );
+    }
+
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json(
+        { error: "Missing SUPABASE_SERVICE_ROLE_KEY." },
+        { status: 500 }
+      );
+    }
+
     if (!to) {
-      return NextResponse.json({ error: "Falta el email del cliente." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Client email is required." },
+        { status: 400 }
+      );
     }
 
     const supabase = createClient(
@@ -42,76 +59,174 @@ export async function POST(
       .single();
 
     if (invoiceError || !invoice) {
-      return NextResponse.json({ error: "Factura no encontrada." }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: invoiceError?.message || "Invoice not found.",
+          details: invoiceError,
+        },
+        { status: 404 }
+      );
     }
 
     const siteUrl =
       process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
 
-    const pdfUrl = `${siteUrl}/api/invoices/${id}/pdf`;
-
-    const pdfResponse = await fetch(pdfUrl, {
-      cache: "no-store",
-    });
-
-    if (!pdfResponse.ok) {
-      return NextResponse.json(
-        { error: "No se pudo generar el PDF para adjuntar." },
-        { status: 500 }
-      );
-    }
-
-    const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
-    const pdfBase64 = pdfBuffer.toString("base64");
-
     const publicLink = invoice.public_token
       ? `${siteUrl}/public-invoice/${invoice.public_token}`
       : `${siteUrl}/invoice/${invoice.id}`;
 
+    const payLink = invoice.public_token
+      ? `${siteUrl}/public-invoice/${invoice.public_token}/pay`
+      : `${siteUrl}/invoice/${invoice.id}`;
+
+    const invoiceNumber = invoice.invoice_number || `INV-${invoice.id}`;
+    const total = money(Number(invoice.total || 0), invoice.currency || "USD");
+
     const html = `
-      <div style="font-family: Arial, sans-serif; background:#f8fafc; padding:32px;">
-        <div style="max-width:640px; margin:auto; background:#ffffff; border-radius:18px; padding:32px; border:1px solid #e5e7eb;">
-          <h1 style="margin:0; color:#0f172a;">Factura ${invoice.invoice_number || ""}</h1>
-          <p style="color:#475569; font-size:15px; line-height:1.6;">
-            ${message.replace(/\n/g, "<br />")}
-          </p>
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Invoice ${invoiceNumber}</title>
+  </head>
+  <body style="margin:0; padding:0; background:#f6f9fc; font-family:Inter, Arial, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f6f9fc; padding:40px 16px;">
+      <tr>
+        <td align="center">
+          <table width="100%" cellpadding="0" cellspacing="0" style="max-width:680px; background:#ffffff; border-radius:24px; overflow:hidden; border:1px solid #e6ebf1;">
+            
+            <tr>
+              <td style="padding:32px 36px; background:#050816;">
+                <table width="100%">
+                  <tr>
+                    <td>
+                      <div style="font-size:20px; font-weight:900; color:#ffffff;">
+                        Tadeo Invoices
+                      </div>
+                      <div style="font-size:13px; color:#94a3b8; margin-top:4px;">
+                        Billing SaaS
+                      </div>
+                    </td>
+                    <td align="right">
+                      <span style="display:inline-block; padding:8px 14px; border-radius:999px; background:#2563eb; color:#ffffff; font-size:12px; font-weight:800; text-transform:uppercase;">
+                        ${invoice.status || "pending"}
+                      </span>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
 
-          <div style="margin:24px 0; padding:18px; background:#f1f5f9; border-radius:14px;">
-            <p style="margin:0; color:#64748b;">Total</p>
-            <p style="margin:6px 0 0; font-size:28px; font-weight:800; color:#0f172a;">
-              ${money(invoice.total, invoice.currency || "USD")}
-            </p>
-          </div>
+            <tr>
+              <td style="padding:38px 36px 20px;">
+                <div style="font-size:14px; font-weight:800; color:#2563eb; text-transform:uppercase; letter-spacing:1.8px;">
+                  Invoice ready
+                </div>
 
-          <a href="${publicLink}" style="display:inline-block; background:#06b6d4; color:#020617; font-weight:800; text-decoration:none; padding:14px 20px; border-radius:14px;">
-            Ver factura online
-          </a>
+                <h1 style="margin:14px 0 0; font-size:34px; line-height:1.15; color:#0f172a; letter-spacing:-1px;">
+                  Invoice ${invoiceNumber}
+                </h1>
 
-          <p style="margin-top:28px; color:#94a3b8; font-size:12px;">
-            También adjuntamos el PDF de la factura en este email.
-          </p>
-        </div>
-      </div>
-    `;
+                <p style="margin:18px 0 0; color:#475569; font-size:15px; line-height:1.7;">
+                  ${
+                    message
+                      ? message.replace(/\n/g, "<br />")
+                      : "Your invoice is ready. You can review it online and complete payment securely using the link below."
+                  }
+                </p>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:10px 36px 0;">
+                <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:20px;">
+                  <tr>
+                    <td style="padding:24px;">
+                      <div style="font-size:13px; color:#64748b; font-weight:700;">
+                        Client
+                      </div>
+                      <div style="margin-top:6px; font-size:16px; color:#0f172a; font-weight:900;">
+                        ${invoice.company_name || "Client"}
+                      </div>
+                      <div style="margin-top:4px; font-size:14px; color:#64748b;">
+                        ${invoice.company_email || ""}
+                      </div>
+                    </td>
+
+                    <td align="right" style="padding:24px;">
+                      <div style="font-size:13px; color:#64748b; font-weight:700;">
+                        Amount Due
+                      </div>
+                      <div style="margin-top:6px; font-size:32px; color:#0f172a; font-weight:900; letter-spacing:-0.8px;">
+                        ${total}
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:30px 36px;">
+                <table cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td>
+                      <a href="${payLink}" style="display:inline-block; background:#2563eb; color:#ffffff; text-decoration:none; padding:15px 22px; border-radius:14px; font-size:15px; font-weight:900;">
+                        Pay invoice
+                      </a>
+                    </td>
+                    <td style="width:12px;"></td>
+                    <td>
+                      <a href="${publicLink}" style="display:inline-block; background:#ffffff; color:#0f172a; text-decoration:none; padding:14px 21px; border-radius:14px; font-size:15px; font-weight:900; border:1px solid #cbd5e1;">
+                        View invoice
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin:22px 0 0; font-size:13px; line-height:1.6; color:#64748b;">
+                  If the buttons do not work, copy and paste this secure link into your browser:
+                </p>
+
+                <p style="margin:8px 0 0; font-size:12px; line-height:1.6; color:#2563eb; word-break:break-all;">
+                  ${publicLink}
+                </p>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:24px 36px; background:#f8fafc; border-top:1px solid #e6ebf1;">
+                <p style="margin:0; color:#94a3b8; font-size:12px; line-height:1.6;">
+                  Sent by Tadeo Invoices. This email contains a secure invoice link for payment and review.
+                </p>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+`;
 
     const { data, error } = await resend.emails.send({
       from:
         process.env.RESEND_FROM_EMAIL ||
         "Tadeo Invoices <onboarding@resend.dev>",
       to: [to],
-      subject: subject || `Factura ${invoice.invoice_number || ""}`,
+      subject: subject || `Invoice ${invoiceNumber}`,
       html,
-      attachments: [
-        {
-          filename: `Factura-${invoice.invoice_number || invoice.id}.pdf`,
-          content: pdfBase64,
-        },
-      ],
     });
 
     if (error) {
-      console.error("RESEND_ERROR", error);
-      return NextResponse.json({ error }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: error.message || "Resend failed.",
+          details: error,
+        },
+        { status: 500 }
+      );
     }
 
     await supabase
@@ -124,9 +239,11 @@ export async function POST(
       data,
     });
   } catch (error: any) {
-    console.error("SEND_INVOICE_EMAIL_ERROR", error);
     return NextResponse.json(
-      { error: error?.message || "Error enviando email." },
+      {
+        error: error?.message || "Error sending invoice email.",
+        details: error,
+      },
       { status: 500 }
     );
   }
