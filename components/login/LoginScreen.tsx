@@ -82,7 +82,7 @@ export default function LoginScreen() {
             </button>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-              <Link href="/fargot-password" className="text-sm font-medium text-blue-700">
+              <Link href="/forgot-password" className="text-sm font-medium text-blue-700">
                 ¿Olvidaste tu contraseña?
               </Link>
 
