@@ -1,150 +1,86 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-
-type Plan = "starter" | "pro" | "business";
-
-function canSendEmail(plan: Plan) {
-  return plan === "pro" || plan === "business";
-}
+import { useState } from "react";
 
 export default function SendInvoiceEmailButton({
   invoiceId,
-  label = "Enviar email",
-  successLabel = "Email enviado",
-  errorLabel = "No se pudo enviar",
+  email,
 }: {
   invoiceId: string;
-  label?: string;
-  successLabel?: string;
-  errorLabel?: string;
+  email?: string | null;
 }) {
   const [loading, setLoading] = useState(false);
-  const [checkingPlan, setCheckingPlan] = useState(true);
-  const [plan, setPlan] = useState<Plan>("starter");
   const [message, setMessage] = useState("");
-  const [isError, setIsError] = useState(false);
-
-  useEffect(() => {
-    async function loadPlan() {
-      try {
-        const supabase = createClient();
-
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          setPlan("starter");
-          return;
-        }
-
-        const { data } = await supabase
-          .from("profiles")
-          .select("plan")
-          .eq("id", user.id)
-          .single();
-
-        setPlan((data?.plan || "starter") as Plan);
-      } catch (error) {
-        console.error("PLAN_LOAD_ERROR", error);
-        setPlan("starter");
-      } finally {
-        setCheckingPlan(false);
-      }
-    }
-
-    loadPlan();
-  }, []);
 
   async function handleSend() {
-    if (!canSendEmail(plan)) {
-      setMessage("Sube a Pro para enviar facturas por email.");
-      setIsError(true);
-      return;
-    }
-
     try {
       setLoading(true);
       setMessage("");
-      setIsError(false);
 
-      const res = await fetch(`/api/invoices/${invoiceId}/send`, {
-        method: "POST",
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data?.error || errorLabel);
+      if (!email) {
+        throw new Error("This invoice has no client email.");
       }
 
-      setMessage(successLabel);
-      setIsError(false);
-    } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : errorLabel
+      const response = await fetch(
+        `/api/invoices/${invoiceId}/send-email`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            to: email,
+            subject: "Invoice from Tadeo Invoices",
+            message:
+              "Your invoice is ready. You can review it and pay securely using the link below.",
+          }),
+        }
       );
-      setIsError(true);
+
+      const text = await response.text();
+      console.log("RAW EMAIL RESPONSE:", text);
+
+      let result: any;
+
+      try {
+        result = JSON.parse(text);
+      } catch {
+        throw new Error(
+          "The API returned HTML instead of JSON. Wrong route or not deployed."
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(result.error || "Email could not be sent.");
+      }
+
+      setMessage("Email sent successfully ✅");
+    } catch (error: any) {
+      console.error("SEND_EMAIL_BUTTON_ERROR:", error);
+      setMessage(error?.message || "Error sending email.");
     } finally {
       setLoading(false);
     }
   }
 
-  // ⏳ Cargando plan
-  if (checkingPlan) {
-    return (
-      <button
-        type="button"
-        disabled
-        className="btn btn-secondary opacity-60"
-      >
-        ...
-      </button>
-    );
-  }
-
-  // 🔒 Bloqueado por plan
-  if (!canSendEmail(plan)) {
-    return (
-      <div className="flex flex-col gap-2">
-        <button
-          type="button"
-          onClick={handleSend}
-          className="btn btn-secondary opacity-80"
-        >
-          Upgrade to Pro
-        </button>
-
-        {message && (
-          <p className="text-xs text-rose-600">
-            {message}
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  // ✅ Permitido
   return (
     <div className="flex flex-col gap-2">
       <button
         type="button"
         onClick={handleSend}
-        disabled={loading}
-        className="btn btn-primary"
+        disabled={loading || !email}
+        className="rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-500 disabled:opacity-50"
       >
-        {loading ? "Enviando..." : label}
+        {loading ? "Sending..." : "Send Email"}
       </button>
 
       {message && (
-        <p
-          className={`text-xs ${
-            isError ? "text-rose-600" : "text-emerald-600"
-          }`}
-        >
-          {message}
+        <p className="text-sm text-slate-300">{message}</p>
+      )}
+
+      {!email && (
+        <p className="text-sm text-red-300">
+          This invoice has no client email.
         </p>
       )}
     </div>
