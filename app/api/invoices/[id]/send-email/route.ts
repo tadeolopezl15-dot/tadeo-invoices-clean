@@ -27,24 +27,15 @@ export async function POST(
     const message = String(body.message || "").trim();
 
     if (!process.env.RESEND_API_KEY) {
-      return NextResponse.json(
-        { error: "Missing RESEND_API_KEY." },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Missing RESEND_API_KEY." }, { status: 500 });
     }
 
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json(
-        { error: "Missing SUPABASE_SERVICE_ROLE_KEY." },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Missing SUPABASE_SERVICE_ROLE_KEY." }, { status: 500 });
     }
 
     if (!to) {
-      return NextResponse.json(
-        { error: "Client email is required." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Client email is required." }, { status: 400 });
     }
 
     const supabase = createClient(
@@ -60,16 +51,12 @@ export async function POST(
 
     if (invoiceError || !invoice) {
       return NextResponse.json(
-        {
-          error: invoiceError?.message || "Invoice not found.",
-          details: invoiceError,
-        },
+        { error: invoiceError?.message || "Invoice not found.", details: invoiceError },
         { status: 404 }
       );
     }
 
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
 
     const publicLink = invoice.public_token
       ? `${siteUrl}/public-invoice/${invoice.public_token}`
@@ -77,138 +64,100 @@ export async function POST(
 
     const payLink = invoice.public_token
       ? `${siteUrl}/public-invoice/${invoice.public_token}/pay`
-      : `${siteUrl}/invoice/${invoice.id}`;
+      : `${siteUrl}/api/invoices/${invoice.id}/pay`;
+
+    const pdfUrl = `${siteUrl}/api/invoices/${invoice.id}/pdf`;
+    const pdfResponse = await fetch(pdfUrl, { cache: "no-store" });
+
+    let attachments:
+      | {
+          filename: string;
+          content: string;
+        }[]
+      | undefined;
+
+    if (pdfResponse.ok) {
+      const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
+      attachments = [
+        {
+          filename: `Invoice-${invoice.invoice_number || invoice.id}.pdf`,
+          content: pdfBuffer.toString("base64"),
+        },
+      ];
+    }
 
     const invoiceNumber = invoice.invoice_number || `INV-${invoice.id}`;
     const total = money(Number(invoice.total || 0), invoice.currency || "USD");
 
     const html = `
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Invoice ${invoiceNumber}</title>
-  </head>
-  <body style="margin:0; padding:0; background:#f6f9fc; font-family:Inter, Arial, sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f6f9fc; padding:40px 16px;">
-      <tr>
-        <td align="center">
-          <table width="100%" cellpadding="0" cellspacing="0" style="max-width:680px; background:#ffffff; border-radius:24px; overflow:hidden; border:1px solid #e6ebf1;">
-            
-            <tr>
-              <td style="padding:32px 36px; background:#050816;">
-                <table width="100%">
-                  <tr>
-                    <td>
-                      <div style="font-size:20px; font-weight:900; color:#ffffff;">
-                        Tadeo Invoices
-                      </div>
-                      <div style="font-size:13px; color:#94a3b8; margin-top:4px;">
-                        Billing SaaS
-                      </div>
-                    </td>
-                    <td align="right">
-                      <span style="display:inline-block; padding:8px 14px; border-radius:999px; background:#2563eb; color:#ffffff; font-size:12px; font-weight:800; text-transform:uppercase;">
-                        ${invoice.status || "pending"}
-                      </span>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
+      <div style="margin:0;padding:0;background:#f6f9fc;font-family:Arial,sans-serif;">
+        <div style="max-width:680px;margin:0 auto;padding:40px 16px;">
+          <div style="background:#050816;border-radius:24px 24px 0 0;padding:32px;">
+            <h1 style="margin:0;color:white;font-size:24px;">Tadeo Invoices</h1>
+            <p style="margin:6px 0 0;color:#94a3b8;">Secure billing and payments</p>
+          </div>
 
-            <tr>
-              <td style="padding:38px 36px 20px;">
-                <div style="font-size:14px; font-weight:800; color:#2563eb; text-transform:uppercase; letter-spacing:1.8px;">
-                  Invoice ready
-                </div>
+          <div style="background:white;border:1px solid #e5e7eb;border-top:0;padding:36px;border-radius:0 0 24px 24px;">
+            <p style="margin:0;color:#2563eb;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;font-size:12px;">
+              Invoice ready
+            </p>
 
-                <h1 style="margin:14px 0 0; font-size:34px; line-height:1.15; color:#0f172a; letter-spacing:-1px;">
-                  Invoice ${invoiceNumber}
-                </h1>
+            <h2 style="margin:14px 0 0;color:#0f172a;font-size:32px;">
+              Invoice ${invoiceNumber}
+            </h2>
 
-                <p style="margin:18px 0 0; color:#475569; font-size:15px; line-height:1.7;">
-                  ${
-                    message
-                      ? message.replace(/\n/g, "<br />")
-                      : "Your invoice is ready. You can review it online and complete payment securely using the link below."
-                  }
-                </p>
-              </td>
-            </tr>
+            <p style="margin:18px 0 0;color:#475569;font-size:15px;line-height:1.7;">
+              ${
+                message
+                  ? message.replace(/\n/g, "<br />")
+                  : "Your invoice is ready. You can review it online, download it, or pay securely using the link below."
+              }
+            </p>
 
-            <tr>
-              <td style="padding:10px 36px 0;">
-                <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:20px;">
-                  <tr>
-                    <td style="padding:24px;">
-                      <div style="font-size:13px; color:#64748b; font-weight:700;">
-                        Client
-                      </div>
-                      <div style="margin-top:6px; font-size:16px; color:#0f172a; font-weight:900;">
-                        ${invoice.company_name || "Client"}
-                      </div>
-                      <div style="margin-top:4px; font-size:14px; color:#64748b;">
-                        ${invoice.company_email || ""}
-                      </div>
-                    </td>
+            <div style="margin:26px 0;padding:22px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:18px;">
+              <p style="margin:0;color:#64748b;font-size:13px;font-weight:700;">Client</p>
+              <p style="margin:6px 0 0;color:#0f172a;font-size:17px;font-weight:900;">
+                ${invoice.company_name || "Client"}
+              </p>
+              <p style="margin:4px 0 0;color:#64748b;font-size:14px;">
+                ${invoice.company_email || ""}
+              </p>
 
-                    <td align="right" style="padding:24px;">
-                      <div style="font-size:13px; color:#64748b; font-weight:700;">
-                        Amount Due
-                      </div>
-                      <div style="margin-top:6px; font-size:32px; color:#0f172a; font-weight:900; letter-spacing:-0.8px;">
-                        ${total}
-                      </div>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
+              <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;" />
 
-            <tr>
-              <td style="padding:30px 36px;">
-                <table cellpadding="0" cellspacing="0">
-                  <tr>
-                    <td>
-                      <a href="${payLink}" style="display:inline-block; background:#2563eb; color:#ffffff; text-decoration:none; padding:15px 22px; border-radius:14px; font-size:15px; font-weight:900;">
-                        Pay invoice
-                      </a>
-                    </td>
-                    <td style="width:12px;"></td>
-                    <td>
-                      <a href="${publicLink}" style="display:inline-block; background:#ffffff; color:#0f172a; text-decoration:none; padding:14px 21px; border-radius:14px; font-size:15px; font-weight:900; border:1px solid #cbd5e1;">
-                        View invoice
-                      </a>
-                    </td>
-                  </tr>
-                </table>
+              <p style="margin:0;color:#64748b;font-size:13px;font-weight:700;">Amount Due</p>
+              <p style="margin:6px 0 0;color:#0f172a;font-size:34px;font-weight:900;">
+                ${total}
+              </p>
+            </div>
 
-                <p style="margin:22px 0 0; font-size:13px; line-height:1.6; color:#64748b;">
-                  If the buttons do not work, copy and paste this secure link into your browser:
-                </p>
+            <a href="${payLink}" style="display:inline-block;background:#2563eb;color:white;text-decoration:none;padding:15px 22px;border-radius:14px;font-weight:900;">
+              Pay invoice
+            </a>
 
-                <p style="margin:8px 0 0; font-size:12px; line-height:1.6; color:#2563eb; word-break:break-all;">
-                  ${publicLink}
-                </p>
-              </td>
-            </tr>
+            <a href="${publicLink}" style="display:inline-block;margin-left:10px;background:white;color:#0f172a;text-decoration:none;padding:14px 21px;border-radius:14px;font-weight:900;border:1px solid #cbd5e1;">
+              View invoice
+            </a>
 
-            <tr>
-              <td style="padding:24px 36px; background:#f8fafc; border-top:1px solid #e6ebf1;">
-                <p style="margin:0; color:#94a3b8; font-size:12px; line-height:1.6;">
-                  Sent by Tadeo Invoices. This email contains a secure invoice link for payment and review.
-                </p>
-              </td>
-            </tr>
+            <p style="margin:26px 0 0;color:#64748b;font-size:13px;line-height:1.6;">
+              Secure invoice link:
+            </p>
 
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>
-`;
+            <p style="margin:6px 0 0;color:#2563eb;font-size:12px;word-break:break-all;">
+              ${publicLink}
+            </p>
+
+            <p style="margin:28px 0 0;color:#94a3b8;font-size:12px;line-height:1.6;">
+              ${
+                attachments
+                  ? "A PDF copy of this invoice is attached."
+                  : "PDF attachment was skipped because the PDF endpoint did not respond successfully."
+              }
+            </p>
+          </div>
+        </div>
+      </div>
+    `;
 
     const { data, error } = await resend.emails.send({
       from:
@@ -217,27 +166,19 @@ export async function POST(
       to: [to],
       subject: subject || `Invoice ${invoiceNumber}`,
       html,
+      attachments,
     });
 
     if (error) {
       return NextResponse.json(
-        {
-          error: error.message || "Resend failed.",
-          details: error,
-        },
+        { error: error.message || "Resend failed.", details: error },
         { status: 500 }
       );
     }
 
-    await supabase
-      .from("invoices")
-      .update({ status: "sent" })
-      .eq("id", id);
+    await supabase.from("invoices").update({ status: "sent" }).eq("id", id);
 
-    return NextResponse.json({
-      ok: true,
-      data,
-    });
+    return NextResponse.json({ ok: true, data });
   } catch (error: any) {
     return NextResponse.json(
       {
