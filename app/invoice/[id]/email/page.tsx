@@ -1,250 +1,244 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 
-function money(value: number, currency = "USD") {
+type Invoice = {
+  id: string;
+  invoice_number: string | null;
+  company_name: string | null;
+  company_email: string | null;
+  total: number | null;
+  currency: string | null;
+};
+
+function money(value: number | null | undefined, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
   }).format(Number(value || 0));
 }
 
-export default function SendInvoiceEmailPage() {
+export default function EmailInvoicePage() {
   const params = useParams();
   const router = useRouter();
-  const supabase = createClient();
 
-  const id = params?.id as string;
+  const invoiceId = String(params.id || "");
 
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  const [invoice, setInvoice] = useState<any>(null);
-  const [toEmail, setToEmail] = useState("");
+  const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(
+    "Your invoice is ready. You can review it and pay securely using the link below."
+  );
+
+  const [loadingInvoice, setLoadingInvoice] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
 
   useEffect(() => {
-    if (!id) return;
-
     async function loadInvoice() {
-      setLoading(true);
-      setError("");
+      try {
+        setLoadingInvoice(true);
 
-      const { data, error } = await supabase
-        .from("invoices")
-        .select("*")
-        .eq("id", id)
-        .single();
+        const response = await fetch(`/api/invoices/${invoiceId}`, {
+          cache: "no-store",
+        });
 
-      if (error || !data) {
-        console.error("LOAD_INVOICE_EMAIL_ERROR", error);
-        setError("No se pudo cargar la factura.");
-        setLoading(false);
-        return;
+        const text = await response.text();
+        console.log("LOAD INVOICE RAW RESPONSE:", text);
+
+        let result: any;
+
+        try {
+          result = JSON.parse(text);
+        } catch {
+          throw new Error(
+            "The invoice API returned HTML instead of JSON. Check /api/invoices/[id]."
+          );
+        }
+
+        if (!response.ok) {
+          throw new Error(result.error || "Invoice could not be loaded.");
+        }
+
+        const loadedInvoice = result.invoice || result.data || result;
+
+        setInvoice(loadedInvoice);
+        setTo(loadedInvoice.company_email || "");
+        setSubject(
+          `Invoice ${loadedInvoice.invoice_number || loadedInvoice.id}`
+        );
+      } catch (error: any) {
+        console.error("LOAD_INVOICE_FOR_EMAIL_ERROR:", error);
+        setStatusMessage(error?.message || "Error loading invoice.");
+      } finally {
+        setLoadingInvoice(false);
       }
-
-      setInvoice(data);
-      setToEmail(data.client_email || "");
-      setSubject(
-        `Factura ${data.invoice_number || ""} - ${data.company_name || "Tadeo Invoices"}`
-      );
-
-      const publicLink = data.public_token
-        ? `${window.location.origin}/public-invoice/${data.public_token}`
-        : `${window.location.origin}/invoice/${data.id}`;
-
-      setMessage(`Hola ${data.client_name || ""},
-
-Te envío tu factura ${data.invoice_number || ""}.
-
-Puedes verla aquí:
-${publicLink}
-
-Total: ${money(data.total, data.currency || "USD")}
-
-Gracias por tu negocio.
-
-${data.company_name || "Tadeo Invoices"}`);
-
-      setLoading(false);
     }
 
-    loadInvoice();
-  }, [id, supabase]);
-
-  async function handleSend(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-
-    if (!toEmail.trim()) {
-      setError("Debes escribir el email del cliente.");
-      return;
+    if (invoiceId) {
+      loadInvoice();
     }
+  }, [invoiceId]);
+
+  async function handleSend(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
     try {
       setSending(true);
+      setStatusMessage("");
 
-      const res = await fetch(`/api/invoices/${id}/send-email`, {
+      if (!invoiceId) {
+        throw new Error("Missing invoice ID.");
+      }
+
+      if (!to.trim()) {
+        throw new Error("Client email is required.");
+      }
+
+      const response = await fetch(`/api/invoices/${invoiceId}/send-email`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          to: toEmail.trim(),
+          to: to.trim(),
           subject: subject.trim(),
           message: message.trim(),
         }),
       });
 
-      const json = await res.json();
+      const text = await response.text();
+      console.log("SEND EMAIL RAW RESPONSE:", text);
 
-      if (!res.ok) {
+      let result: any;
+
+      try {
+        result = JSON.parse(text);
+      } catch {
         throw new Error(
-          json?.error?.message ||
-            json?.error ||
-            "No se pudo enviar el email."
+          "The email API returned HTML instead of JSON. The page was calling the wrong route or the deploy is outdated."
         );
       }
 
-      setSuccess("Email enviado correctamente con PDF adjunto.");
-    } catch (err: any) {
-      console.error("SEND_EMAIL_ERROR", err);
-      setError(err?.message || "Error enviando el email.");
+      if (!response.ok) {
+        throw new Error(result.error || "Email could not be sent.");
+      }
+
+      setStatusMessage("Email sent successfully ✅");
+
+      setTimeout(() => {
+        router.push(`/invoice/${invoiceId}`);
+        router.refresh();
+      }, 900);
+    } catch (error: any) {
+      console.error("SEND_INVOICE_EMAIL_PAGE_ERROR:", error);
+      setStatusMessage(error?.message || "Error sending email.");
     } finally {
       setSending(false);
     }
   }
 
-  if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
-        <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-8">
-          Cargando factura...
-        </div>
-      </main>
-    );
-  }
-
-  if (!invoice) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-4 text-white">
-        <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-8 text-center">
-          <h1 className="text-2xl font-black">Factura no encontrada</h1>
-          <Link
-            href="/invoice"
-            className="mt-5 inline-flex rounded-2xl bg-cyan-400 px-5 py-3 font-bold text-slate-950 hover:bg-cyan-300"
-          >
-            Volver a facturas
-          </Link>
-        </div>
-      </main>
-    );
-  }
-
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-10 text-white">
+    <main className="min-h-screen bg-[#050816] px-6 py-8 text-white">
       <div className="mx-auto max-w-4xl">
-        <div className="mb-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl">
-          <p className="text-sm font-semibold text-cyan-300">
+        <Link
+          href={`/invoice/${invoiceId}`}
+          className="inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-blue-200 hover:bg-white/10"
+        >
+          ← Back to invoice
+        </Link>
+
+        <section className="mt-6 rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/30">
+          <p className="text-sm font-black uppercase tracking-[0.25em] text-blue-300">
             Tadeo Invoices
           </p>
-          <h1 className="mt-2 text-3xl font-black tracking-tight">
-            Enviar factura por email
-          </h1>
-          <p className="mt-2 text-sm text-slate-400">
-            Factura #{invoice.invoice_number || "Sin número"} · Total{" "}
-            <span className="font-bold text-cyan-300">
-              {money(invoice.total, invoice.currency || "USD")}
-            </span>
+
+          <h1 className="mt-4 text-4xl font-black">Send Invoice Email</h1>
+
+          <p className="mt-3 text-slate-400">
+            Send this invoice using the secure email route.
           </p>
-        </div>
 
-        {error && (
-          <div className="mb-5 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
-            {error}
-          </div>
-        )}
+          {loadingInvoice ? (
+            <div className="mt-8 rounded-2xl border border-white/10 bg-black/20 p-5 text-slate-300">
+              Loading invoice...
+            </div>
+          ) : null}
 
-        {success && (
-          <div className="mb-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">
-            {success}
-          </div>
-        )}
+          {invoice ? (
+            <div className="mt-8 rounded-2xl border border-white/10 bg-black/20 p-5">
+              <p className="text-sm text-slate-400">Invoice</p>
+              <h2 className="mt-1 text-2xl font-black">
+                {invoice.invoice_number || invoice.id}
+              </h2>
 
-        <form
-          onSubmit={handleSend}
-          className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl"
-        >
-          <div className="grid gap-5">
+              <p className="mt-2 text-slate-400">
+                {invoice.company_name || "Unnamed client"} ·{" "}
+                {invoice.company_email || "No email"}
+              </p>
+
+              <p className="mt-4 text-3xl font-black">
+                {money(invoice.total, invoice.currency || "USD")}
+              </p>
+            </div>
+          ) : null}
+
+          <form onSubmit={handleSend} className="mt-8 space-y-5">
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-300">
-                Para
+              <label className="text-sm font-bold text-slate-300">
+                Send To
               </label>
               <input
-                value={toEmail}
-                onChange={(e) => setToEmail(e.target.value)}
                 type="email"
-                placeholder="cliente@email.com"
-                className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-4 text-white outline-none placeholder:text-slate-500 focus:border-cyan-400"
+                value={to}
+                onChange={(event) => setTo(event.target.value)}
+                placeholder="client@example.com"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:ring-4 focus:ring-blue-500/30"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-300">
-                Asunto
+              <label className="text-sm font-bold text-slate-300">
+                Subject
               </label>
               <input
                 value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="Factura INV-001"
-                className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-4 text-white outline-none placeholder:text-slate-500 focus:border-cyan-400"
+                onChange={(event) => setSubject(event.target.value)}
+                placeholder="Invoice from Tadeo Invoices"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:ring-4 focus:ring-blue-500/30"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-300">
-                Mensaje
+              <label className="text-sm font-bold text-slate-300">
+                Message
               </label>
               <textarea
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="min-h-[230px] w-full resize-none rounded-2xl border border-white/10 bg-slate-900 px-4 py-4 text-white outline-none placeholder:text-slate-500 focus:border-cyan-400"
+                onChange={(event) => setMessage(event.target.value)}
+                rows={5}
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:ring-4 focus:ring-blue-500/30"
               />
             </div>
-          </div>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-3">
+            {statusMessage ? (
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-300">
+                {statusMessage}
+              </div>
+            ) : null}
+
             <button
+              type="submit"
               disabled={sending}
-              className="rounded-2xl bg-cyan-400 px-5 py-4 font-black text-slate-950 shadow-lg shadow-cyan-500/20 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-2xl bg-blue-500 px-6 py-4 font-black text-white shadow-xl shadow-blue-500/25 hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {sending ? "Enviando..." : "Enviar con PDF"}
+              {sending ? "Sending..." : "Send Email"}
             </button>
-
-            <Link
-              href={`/api/invoices/${id}/pdf`}
-              target="_blank"
-              className="rounded-2xl border border-purple-400/30 bg-purple-400/10 px-5 py-4 text-center font-bold text-purple-200 hover:bg-purple-400/20"
-            >
-              Ver PDF
-            </Link>
-
-            <button
-              type="button"
-              onClick={() => router.push(`/invoice/${id}`)}
-              className="rounded-2xl border border-white/10 px-5 py-4 font-bold text-white hover:bg-white/10"
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
+          </form>
+        </section>
       </div>
     </main>
   );
