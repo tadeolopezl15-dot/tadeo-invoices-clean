@@ -66,8 +66,8 @@ export async function POST(
       ? `${siteUrl}/public-invoice/${invoice.public_token}/pay`
       : `${siteUrl}/api/invoices/${invoice.id}/pay`;
 
-    const pdfUrl = `${siteUrl}/api/invoices/${invoice.id}/pdf`;
-    const pdfResponse = await fetch(pdfUrl, { cache: "no-store" });
+    const invoiceNumber = invoice.invoice_number || `INV-${invoice.id}`;
+    const total = money(Number(invoice.total || 0), invoice.currency || "USD");
 
     let attachments:
       | {
@@ -76,18 +76,24 @@ export async function POST(
         }[]
       | undefined;
 
-    if (pdfResponse.ok) {
-      const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
-      attachments = [
-        {
-          filename: `Invoice-${invoice.invoice_number || invoice.id}.pdf`,
-          content: pdfBuffer.toString("base64"),
-        },
-      ];
-    }
+    try {
+      const pdfUrl = `${siteUrl}/api/invoices/${invoice.id}/pdf`;
+      const pdfResponse = await fetch(pdfUrl, { cache: "no-store" });
 
-    const invoiceNumber = invoice.invoice_number || `INV-${invoice.id}`;
-    const total = money(Number(invoice.total || 0), invoice.currency || "USD");
+      if (pdfResponse.ok) {
+        const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
+        attachments = [
+          {
+            filename: `Invoice-${invoice.invoice_number || invoice.id}.pdf`,
+            content: pdfBuffer.toString("base64"),
+          },
+        ];
+      } else {
+        console.warn("PDF_SKIPPED:", await pdfResponse.text());
+      }
+    } catch (pdfError) {
+      console.warn("PDF_ATTACHMENT_SKIPPED:", pdfError);
+    }
 
     const html = `
       <div style="margin:0;padding:0;background:#f6f9fc;font-family:Arial,sans-serif;">
@@ -110,7 +116,7 @@ export async function POST(
               ${
                 message
                   ? message.replace(/\n/g, "<br />")
-                  : "Your invoice is ready. You can review it online, download it, or pay securely using the link below."
+                  : "Your invoice is ready. You can review it online or pay securely using the link below."
               }
             </p>
 
@@ -139,20 +145,9 @@ export async function POST(
               View invoice
             </a>
 
-            <p style="margin:26px 0 0;color:#64748b;font-size:13px;line-height:1.6;">
-              Secure invoice link:
-            </p>
-
+            <p style="margin:26px 0 0;color:#64748b;font-size:13px;">Secure invoice link:</p>
             <p style="margin:6px 0 0;color:#2563eb;font-size:12px;word-break:break-all;">
               ${publicLink}
-            </p>
-
-            <p style="margin:28px 0 0;color:#94a3b8;font-size:12px;line-height:1.6;">
-              ${
-                attachments
-                  ? "A PDF copy of this invoice is attached."
-                  : "PDF attachment was skipped because the PDF endpoint did not respond successfully."
-              }
             </p>
           </div>
         </div>
@@ -178,13 +173,10 @@ export async function POST(
 
     await supabase.from("invoices").update({ status: "sent" }).eq("id", id);
 
-    return NextResponse.json({ ok: true, data });
+    return NextResponse.json({ ok: true, data, pdfAttached: Boolean(attachments) });
   } catch (error: any) {
     return NextResponse.json(
-      {
-        error: error?.message || "Error sending invoice email.",
-        details: error,
-      },
+      { error: error?.message || "Error sending invoice email.", details: error },
       { status: 500 }
     );
   }
