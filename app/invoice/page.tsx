@@ -16,6 +16,27 @@ type Invoice = {
   public_token?: string | null;
 };
 
+const baseBtn =
+  "rounded-xl border border-white/10 px-3 py-2 text-xs font-black transition hover:bg-white/10";
+
+const blueBtn =
+  "rounded-xl border border-blue-400/30 bg-blue-400/10 px-3 py-2 text-xs font-black text-blue-200 transition hover:bg-blue-400/20";
+
+const purpleBtn =
+  "rounded-xl border border-purple-400/30 bg-purple-400/10 px-3 py-2 text-xs font-black text-purple-200 transition hover:bg-purple-400/20";
+
+const cyanBtn =
+  "rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-black text-cyan-200 transition hover:bg-cyan-400/20";
+
+const greenBtn =
+  "rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs font-black text-emerald-200 transition hover:bg-emerald-400/20";
+
+const payBtn =
+  "rounded-xl border border-cyan-400 bg-cyan-400 px-3 py-2 text-xs font-black text-slate-950 transition hover:bg-cyan-300";
+
+const redBtn =
+  "rounded-xl border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs font-black text-red-200 transition hover:bg-red-400/20";
+
 function money(value?: number | null, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -59,9 +80,11 @@ export default async function InvoicePage() {
   const invoices = (data || []) as Invoice[];
 
   const totalRevenue = invoices.reduce((sum, i) => sum + Number(i.total || 0), 0);
+
   const paidRevenue = invoices
     .filter((i) => i.status === "paid")
     .reduce((sum, i) => sum + Number(i.total || 0), 0);
+
   const pendingRevenue = invoices
     .filter((i) => i.status !== "paid")
     .reduce((sum, i) => sum + Number(i.total || 0), 0);
@@ -183,37 +206,37 @@ export default async function InvoicePage() {
 
                         <td className="px-5 py-5">
                           <div className="flex flex-wrap justify-end gap-2">
-                            <Link href={`/invoice/${invoice.id}` as any} className="btn">
+                            <Link href={`/invoice/${invoice.id}` as any} className={baseBtn}>
                               View
                             </Link>
 
-                            <Link href={`/invoice/${invoice.id}/edit` as any} className="btn-blue">
+                            <Link href={`/invoice/${invoice.id}/edit` as any} className={blueBtn}>
                               Edit
                             </Link>
 
-                            <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="btn-purple">
+                            <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className={purpleBtn}>
                               PDF
                             </a>
 
-                            <a href={pdfUrl} download className="btn-cyan">
+                            <a href={pdfUrl} download className={cyanBtn}>
                               Download
                             </a>
 
-                            <Link href={`/invoice/${invoice.id}/email` as any} className="btn-green">
+                            <Link href={`/invoice/${invoice.id}/email` as any} className={greenBtn}>
                               Email
                             </Link>
 
-                            <a href={payUrl} className="btn-pay">
+                            <a href={payUrl} className={payBtn}>
                               Pay
                             </a>
 
-                            <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="btn">
+                            <a href={publicUrl} target="_blank" rel="noopener noreferrer" className={baseBtn}>
                               Public
                             </a>
 
                             <form action={deleteInvoice}>
                               <input type="hidden" name="id" value={invoice.id} />
-                              <button className="btn-red" type="submit">
+                              <button className={redBtn} type="submit">
                                 Delete
                               </button>
                             </form>
@@ -228,62 +251,6 @@ export default async function InvoicePage() {
           </div>
         </section>
       </div>
-
-      <style jsx>{`
-        .btn,
-        .btn-blue,
-        .btn-purple,
-        .btn-cyan,
-        .btn-green,
-        .btn-pay,
-        .btn-red {
-          border-radius: 0.8rem;
-          padding: 0.55rem 0.8rem;
-          font-size: 0.75rem;
-          font-weight: 900;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          transition: 0.2s ease;
-        }
-
-        .btn {
-          color: white;
-        }
-
-        .btn:hover {
-          background: rgba(255, 255, 255, 0.1);
-        }
-
-        .btn-blue {
-          color: #93c5fd;
-          background: rgba(59, 130, 246, 0.12);
-        }
-
-        .btn-purple {
-          color: #c084fc;
-          background: rgba(168, 85, 247, 0.15);
-        }
-
-        .btn-cyan {
-          color: #22d3ee;
-          background: rgba(34, 211, 238, 0.15);
-        }
-
-        .btn-green {
-          color: #34d399;
-          background: rgba(16, 185, 129, 0.15);
-        }
-
-        .btn-pay {
-          color: #020617;
-          background: #22d3ee;
-          border-color: #22d3ee;
-        }
-
-        .btn-red {
-          color: #fecaca;
-          background: rgba(239, 68, 68, 0.18);
-        }
-      `}</style>
     </main>
   );
 }
