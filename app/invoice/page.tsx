@@ -1,281 +1,313 @@
 import Link from "next/link";
-import { createServerClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
 
 type Invoice = {
   id: string;
-  invoice_number: string | null;
-  company_name: string | null;
-  company_email: string | null;
-  total: number | null;
-  status: string | null;
-  currency: string | null;
-  issue_date: string | null;
-  created_at: string | null;
-  public_token: string | null;
+  invoice_number?: string | null;
+  client_name?: string | null;
+  client_email?: string | null;
+  company_name?: string | null;
+  total?: number | null;
+  status?: string | null;
+  currency?: string | null;
+  issue_date?: string | null;
+  due_date?: string | null;
+  public_token?: string | null;
 };
 
-function money(value: number | null | undefined, currency = "USD") {
+function money(value?: number | null, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
   }).format(Number(value || 0));
 }
 
-function formatDate(value?: string | null) {
-  if (!value) return "—";
-
-  return new Intl.DateTimeFormat("en-US", {
+function dateLabel(date?: string | null) {
+  if (!date) return "—";
+  return new Date(date).toLocaleDateString("en-US", {
     month: "short",
-    day: "2-digit",
+    day: "numeric",
     year: "numeric",
-  }).format(new Date(value));
+  });
 }
 
-function statusStyle(status?: string | null) {
-  const value = String(status || "pending").toLowerCase();
+async function deleteInvoice(formData: FormData) {
+  "use server";
 
-  if (value === "paid") {
-    return "border-emerald-400/20 bg-emerald-500/10 text-emerald-300";
-  }
+  const id = String(formData.get("id") || "");
+  if (!id) return;
 
-  if (value === "canceled" || value === "cancelled") {
-    return "border-red-400/20 bg-red-500/10 text-red-300";
-  }
+  const supabase = await createClient();
 
-  return "border-amber-400/20 bg-amber-500/10 text-amber-300";
-}
+  await supabase.from("invoice_items").delete().eq("invoice_id", id);
+  await supabase.from("invoices").delete().eq("id", id);
 
-function statusLabel(status?: string | null) {
-  const value = String(status || "pending").toLowerCase();
-
-  if (value === "paid") return "Paid";
-  if (value === "canceled" || value === "cancelled") return "Canceled";
-
-  return "Pending";
+  revalidatePath("/invoice");
 }
 
 export default async function InvoicePage() {
-  const supabase = await createServerClient();
+  const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return (
-      <main className="min-h-screen bg-[#050816] px-6 py-10 text-white">
-        <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center">
-          <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-8 text-center shadow-2xl shadow-black/30">
-            <p className="text-sm font-black uppercase tracking-[0.25em] text-blue-300">
-              Tadeo Invoices
-            </p>
-            <h1 className="mt-4 text-4xl font-black">Sign in required</h1>
-            <p className="mt-3 text-slate-400">
-              You need to sign in before viewing your invoices.
-            </p>
-            <Link
-              href="/login"
-              className="mt-6 inline-flex rounded-2xl bg-blue-500 px-6 py-3 font-black text-white shadow-xl shadow-blue-500/25 transition hover:bg-blue-400"
-            >
-              Go to Login
-            </Link>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("invoices")
     .select(
-      "id, invoice_number, company_name, company_email, total, status, currency, issue_date, created_at, public_token"
+      "id, invoice_number, client_name, client_email, company_name, total, status, currency, issue_date, due_date, public_token"
     )
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+    .order("issue_date", { ascending: false });
 
   const invoices = (data || []) as Invoice[];
 
-  const paidInvoices = invoices.filter(
-    (invoice) => String(invoice.status || "").toLowerCase() === "paid"
-  );
-
-  const pendingInvoices = invoices.filter(
-    (invoice) => String(invoice.status || "").toLowerCase() !== "paid"
-  );
-
-  const totalRevenue = paidInvoices.reduce(
-    (sum, invoice) => sum + Number(invoice.total || 0),
-    0
-  );
-
-  const pendingAmount = pendingInvoices.reduce(
-    (sum, invoice) => sum + Number(invoice.total || 0),
-    0
-  );
+  const totalRevenue = invoices.reduce((sum, i) => sum + Number(i.total || 0), 0);
+  const paidRevenue = invoices
+    .filter((i) => i.status === "paid")
+    .reduce((sum, i) => sum + Number(i.total || 0), 0);
+  const pendingRevenue = invoices
+    .filter((i) => i.status !== "paid")
+    .reduce((sum, i) => sum + Number(i.total || 0), 0);
 
   return (
-    <main className="min-h-screen bg-[#050816] px-6 py-8 text-white">
+    <main className="min-h-screen bg-[#020617] px-4 py-8 text-white">
       <div className="mx-auto max-w-7xl">
-        <div className="flex flex-col gap-5 border-b border-white/10 pb-8 lg:flex-row lg:items-center lg:justify-between">
-          <div>
+        <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl">
+          <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl" />
+          <div className="absolute -bottom-24 left-10 h-72 w-72 rounded-full bg-blue-600/20 blur-3xl" />
+
+          <div className="relative flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.25em] text-cyan-300">
+                Tadeo Invoices
+              </p>
+              <h1 className="mt-3 text-5xl font-black tracking-tight">
+                Invoices
+              </h1>
+              <p className="mt-3 max-w-2xl text-slate-400">
+                Manage invoices, send professional emails, download PDFs, collect
+                Stripe payments, and track client billing.
+              </p>
+            </div>
+
             <Link
-              href="/dashboard"
-              className="inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-blue-200 transition hover:bg-white/10"
+              href={"/invoice/new" as any}
+              className="rounded-2xl bg-cyan-400 px-6 py-4 text-center font-black text-slate-950 shadow-lg shadow-cyan-500/20 hover:bg-cyan-300"
             >
-              ← Back to dashboard
+              + New Invoice
             </Link>
-
-            <h1 className="mt-5 text-4xl font-black tracking-tight md:text-5xl">
-              Invoices
-            </h1>
-
-            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-400">
-              Manage every invoice, payment status, public link, and client
-              balance from one ultra-clean workspace.
-            </p>
           </div>
-
-          <Link
-            href="/invoice/new"
-            className="rounded-2xl bg-blue-500 px-6 py-4 text-center font-black text-white shadow-xl shadow-blue-500/25 transition hover:bg-blue-400"
-          >
-            + Create Invoice
-          </Link>
-        </div>
-
-        {error ? (
-          <div className="mt-6 rounded-3xl border border-red-400/30 bg-red-500/10 p-5 text-sm font-semibold text-red-200">
-            Could not load invoices: {error.message}
-          </div>
-        ) : null}
-
-        <section className="mt-8 grid gap-5 md:grid-cols-3">
-          <MetricCard
-            label="Total Revenue"
-            value={money(totalRevenue)}
-            note="Paid invoices only"
-          />
-          <MetricCard
-            label="Pending Balance"
-            value={money(pendingAmount)}
-            note="Awaiting payment"
-          />
-          <MetricCard
-            label="Total Invoices"
-            value={invoices.length}
-            note={`${paidInvoices.length} paid · ${pendingInvoices.length} pending`}
-          />
         </section>
 
-        <section className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/30">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-2xl font-black">Invoice Center</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Click any invoice to open details, PDF, payment link, or edit.
-              </p>
-            </div>
+        <section className="mt-6 grid gap-4 md:grid-cols-3">
+          <Metric title="Total Billed" value={money(totalRevenue)} />
+          <Metric title="Paid" value={money(paidRevenue)} tone="green" />
+          <Metric title="Outstanding" value={money(pendingRevenue)} tone="yellow" />
+        </section>
 
-            <div className="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-sm font-bold text-slate-300">
-              {invoices.length} records
-            </div>
+        <section className="mt-8 overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.04] shadow-2xl">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1180px] text-left">
+              <thead className="border-b border-white/10 bg-white/[0.03] text-xs uppercase tracking-wide text-slate-400">
+                <tr>
+                  <th className="px-5 py-4">Invoice</th>
+                  <th className="px-5 py-4">Client</th>
+                  <th className="px-5 py-4">Issue Date</th>
+                  <th className="px-5 py-4">Due Date</th>
+                  <th className="px-5 py-4">Status</th>
+                  <th className="px-5 py-4 text-right">Total</th>
+                  <th className="px-5 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-white/10">
+                {invoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-5 py-12 text-center">
+                      <p className="text-xl font-black">No invoices yet</p>
+                      <p className="mt-2 text-slate-400">
+                        Create your first professional invoice.
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  invoices.map((invoice) => {
+                    const pdfUrl = `/api/invoices/${invoice.id}/pdf`;
+                    const payUrl = `/api/invoices/${invoice.id}/pay`;
+                    const publicUrl = invoice.public_token
+                      ? `/public-invoice/${invoice.public_token}`
+                      : `/invoice/${invoice.id}`;
+
+                    return (
+                      <tr key={invoice.id} className="hover:bg-white/[0.03]">
+                        <td className="px-5 py-5">
+                          <p className="font-black">
+                            {invoice.invoice_number || invoice.id.slice(0, 8)}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            ID: {invoice.id.slice(0, 8)}
+                          </p>
+                        </td>
+
+                        <td className="px-5 py-5">
+                          <p className="font-bold">
+                            {invoice.client_name || "Unknown Client"}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            {invoice.client_email || "No email"}
+                          </p>
+                        </td>
+
+                        <td className="px-5 py-5 text-sm text-slate-300">
+                          {dateLabel(invoice.issue_date)}
+                        </td>
+
+                        <td className="px-5 py-5 text-sm text-slate-300">
+                          {dateLabel(invoice.due_date)}
+                        </td>
+
+                        <td className="px-5 py-5">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-black uppercase ${
+                              invoice.status === "paid"
+                                ? "bg-emerald-400/10 text-emerald-300"
+                                : invoice.status === "sent"
+                                  ? "bg-blue-400/10 text-blue-300"
+                                  : "bg-amber-400/10 text-amber-300"
+                            }`}
+                          >
+                            {invoice.status || "pending"}
+                          </span>
+                        </td>
+
+                        <td className="px-5 py-5 text-right font-black text-cyan-300">
+                          {money(invoice.total, invoice.currency || "USD")}
+                        </td>
+
+                        <td className="px-5 py-5">
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <Link href={`/invoice/${invoice.id}` as any} className="btn">
+                              View
+                            </Link>
+
+                            <Link href={`/invoice/${invoice.id}/edit` as any} className="btn-blue">
+                              Edit
+                            </Link>
+
+                            <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="btn-purple">
+                              PDF
+                            </a>
+
+                            <a href={pdfUrl} download className="btn-cyan">
+                              Download
+                            </a>
+
+                            <Link href={`/invoice/${invoice.id}/email` as any} className="btn-green">
+                              Email
+                            </Link>
+
+                            <a href={payUrl} className="btn-pay">
+                              Pay
+                            </a>
+
+                            <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="btn">
+                              Public
+                            </a>
+
+                            <form action={deleteInvoice}>
+                              <input type="hidden" name="id" value={invoice.id} />
+                              <button className="btn-red" type="submit">
+                                Delete
+                              </button>
+                            </form>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-
-          {invoices.length ? (
-            <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-white/10">
-              <div className="hidden grid-cols-12 bg-white/[0.03] px-5 py-4 text-xs font-black uppercase tracking-[0.18em] text-slate-500 lg:grid">
-                <div className="col-span-3">Invoice</div>
-                <div className="col-span-3">Client</div>
-                <div className="col-span-2">Date</div>
-                <div className="col-span-2">Status</div>
-                <div className="col-span-2 text-right">Total</div>
-              </div>
-
-              <div className="divide-y divide-white/10">
-                {invoices.map((invoice) => (
-                  <Link
-                    key={invoice.id}
-                    href={`/invoice/${invoice.id}`}
-                    className="grid gap-4 px-5 py-5 transition hover:bg-white/[0.04] lg:grid-cols-12 lg:items-center"
-                  >
-                    <div className="lg:col-span-3">
-                      <p className="font-black text-white">
-                        {invoice.invoice_number ||
-                          `INV-${invoice.id.slice(0, 8)}`}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        ID: {invoice.id.slice(0, 8)}
-                      </p>
-                    </div>
-
-                    <div className="lg:col-span-3">
-                      <p className="text-sm font-bold text-slate-200">
-                        {invoice.company_name || "Unnamed client"}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {invoice.company_email || "No email"}
-                      </p>
-                    </div>
-
-                    <div className="text-sm font-semibold text-slate-400 lg:col-span-2">
-                      {formatDate(invoice.issue_date || invoice.created_at)}
-                    </div>
-
-                    <div className="lg:col-span-2">
-                      <span
-                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-black ${statusStyle(
-                          invoice.status
-                        )}`}
-                      >
-                        {statusLabel(invoice.status)}
-                      </span>
-                    </div>
-
-                    <div className="text-xl font-black text-white lg:col-span-2 lg:text-right">
-                      {money(invoice.total, invoice.currency || "USD")}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="mt-6 rounded-[2rem] border border-dashed border-white/10 bg-black/20 p-10 text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-500/10 text-3xl">
-                📄
-              </div>
-              <h3 className="mt-5 text-2xl font-black">No invoices yet</h3>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-                Create your first professional invoice and start tracking your
-                client payments.
-              </p>
-              <Link
-                href="/invoice/new"
-                className="mt-6 inline-flex rounded-2xl bg-blue-500 px-6 py-3 font-black text-white shadow-xl shadow-blue-500/25 transition hover:bg-blue-400"
-              >
-                Create Invoice
-              </Link>
-            </div>
-          )}
         </section>
       </div>
+
+      <style jsx>{`
+        .btn,
+        .btn-blue,
+        .btn-purple,
+        .btn-cyan,
+        .btn-green,
+        .btn-pay,
+        .btn-red {
+          border-radius: 0.8rem;
+          padding: 0.55rem 0.8rem;
+          font-size: 0.75rem;
+          font-weight: 900;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          transition: 0.2s ease;
+        }
+
+        .btn {
+          color: white;
+        }
+
+        .btn:hover {
+          background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-blue {
+          color: #93c5fd;
+          background: rgba(59, 130, 246, 0.12);
+        }
+
+        .btn-purple {
+          color: #c084fc;
+          background: rgba(168, 85, 247, 0.15);
+        }
+
+        .btn-cyan {
+          color: #22d3ee;
+          background: rgba(34, 211, 238, 0.15);
+        }
+
+        .btn-green {
+          color: #34d399;
+          background: rgba(16, 185, 129, 0.15);
+        }
+
+        .btn-pay {
+          color: #020617;
+          background: #22d3ee;
+          border-color: #22d3ee;
+        }
+
+        .btn-red {
+          color: #fecaca;
+          background: rgba(239, 68, 68, 0.18);
+        }
+      `}</style>
     </main>
   );
 }
 
-function MetricCard({
-  label,
+function Metric({
+  title,
   value,
-  note,
+  tone,
 }: {
-  label: string;
-  value: string | number;
-  note: string;
+  title: string;
+  value: string;
+  tone?: "green" | "yellow";
 }) {
+  const color =
+    tone === "green"
+      ? "text-emerald-300"
+      : tone === "yellow"
+        ? "text-amber-300"
+        : "text-cyan-300";
+
   return (
-    <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-6 shadow-xl shadow-black/20">
-      <p className="text-sm font-bold text-slate-400">{label}</p>
-      <h2 className="mt-3 text-3xl font-black text-white">{value}</h2>
-      <p className="mt-2 text-sm text-slate-500">{note}</p>
+    <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 shadow-xl">
+      <p className="text-sm font-bold text-slate-400">{title}</p>
+      <p className={`mt-3 text-3xl font-black ${color}`}>{value}</p>
     </div>
   );
 }
