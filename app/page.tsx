@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 
 const features = [
   {
@@ -18,7 +20,17 @@ const features = [
   },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect("/dashboard");
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-white via-blue-50/50 to-white text-slate-950">
       <section className="mx-auto max-w-7xl px-4 py-14">
@@ -41,28 +53,37 @@ export default function HomePage() {
             </div>
 
             <nav className="flex flex-wrap items-center justify-center gap-2 text-sm font-black text-slate-950">
-              <Link href="/" className="rounded-2xl bg-blue-50 px-5 py-3 text-blue-700">
-                Inicio
+              <Link
+                href="/"
+                className="rounded-2xl bg-blue-50 px-5 py-3 text-blue-700"
+              >
+                Home
               </Link>
-              <Link href="/dashboard" className="rounded-2xl px-5 py-3 hover:bg-blue-50">
-                Dashboard
+              <Link
+                href="/login"
+                className="rounded-2xl px-5 py-3 hover:bg-blue-50"
+              >
+                Login
               </Link>
-              <Link href="/invoice" className="rounded-2xl px-5 py-3 hover:bg-blue-50">
-                Facturas
+              <Link
+                href="/signup"
+                className="rounded-2xl px-5 py-3 hover:bg-blue-50"
+              >
+                Sign up
               </Link>
-              <Link href="/pricing" className="rounded-2xl px-5 py-3 hover:bg-blue-50">
-                Precios
-              </Link>
-              <Link href="/configuracion" className="rounded-2xl px-5 py-3 hover:bg-blue-50">
-                Configuración
+              <Link
+                href="/pricing"
+                className="rounded-2xl px-5 py-3 hover:bg-blue-50"
+              >
+                Pricing
               </Link>
             </nav>
 
             <Link
-              href="/invoice/new"
+              href="/login"
               className="rounded-2xl bg-blue-700 px-6 py-4 text-center text-lg font-black text-white shadow-xl shadow-blue-700/25 hover:bg-blue-600"
             >
-              + Nueva factura
+              Login to continue
             </Link>
           </div>
         </div>
@@ -75,22 +96,22 @@ export default function HomePage() {
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-xl font-medium leading-8 text-slate-600">
             Create professional invoices, accept online payments and manage your
-            business from one place.
+            business from one secure account.
           </p>
 
           <div className="mt-10 flex flex-wrap justify-center gap-5">
             <Link
-              href="/invoice"
+              href="/login"
               className="rounded-2xl bg-blue-700 px-8 py-4 text-lg font-black text-white shadow-xl shadow-blue-700/25 hover:bg-blue-600"
             >
-              Get started →
+              Login →
             </Link>
 
             <Link
-              href="/pricing"
+              href="/signup"
               className="rounded-2xl px-8 py-4 text-lg font-black text-blue-700 hover:bg-blue-50"
             >
-              View pricing →
+              Create account →
             </Link>
           </div>
         </div>
@@ -127,22 +148,22 @@ export default function HomePage() {
 
         <section className="mt-16 overflow-hidden rounded-[2rem] bg-gradient-to-br from-blue-700 to-slate-950 px-6 py-16 text-center text-white shadow-2xl shadow-blue-900/20">
           <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-white/15 text-4xl">
-            📄
+            🔐
           </div>
 
           <h2 className="mx-auto max-w-3xl text-4xl font-black leading-tight md:text-5xl">
-            Start your invoicing system today
+            Login first to access your invoice workspace
           </h2>
 
           <p className="mt-5 text-lg text-blue-100">
-            Join professionals already using Tadeo Invoices.
+            Your dashboard, invoices, payments and settings are protected.
           </p>
 
           <Link
-            href="/invoice/new"
+            href="/login"
             className="mt-9 inline-flex rounded-2xl bg-white px-10 py-4 text-lg font-black text-blue-700 shadow-xl hover:bg-blue-50"
           >
-            Get started now →
+            Login now →
           </Link>
         </section>
       </section>

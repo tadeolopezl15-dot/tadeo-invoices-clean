@@ -1,13 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const PUBLIC_ROUTES = ["/login", "/signup", "/pricing"];
+const PUBLIC_ROUTES = ["/", "/login", "/signup", "/pricing"];
 
-const PUBLIC_PREFIXES = [
-  "/public-invoice",
-  "/api/stripe/webhook",
-  "/api/invoices",
-];
+const PUBLIC_PREFIXES = ["/public-invoice", "/api/stripe/webhook"];
 
 function isPublicRoute(pathname: string) {
   if (PUBLIC_ROUTES.includes(pathname)) return true;
@@ -58,7 +54,6 @@ export async function middleware(request: NextRequest) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("redirectedFrom", pathname);
-
     return NextResponse.redirect(loginUrl);
   }
 
