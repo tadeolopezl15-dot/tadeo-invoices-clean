@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 
 const features = [
   {
@@ -20,38 +18,33 @@ const features = [
   },
 ];
 
-export default async function HomePage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user) {
-    redirect("/dashboard");
-  }
-
+export default function HomePage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-white via-blue-50/50 to-white text-slate-950">
       <section className="mx-auto max-w-7xl px-4 py-14">
+        {/* TOP NAVBAR */}
         <div className="rounded-[2rem] border border-slate-200 bg-white/85 p-5 shadow-xl shadow-blue-900/5 backdrop-blur-xl">
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+            {/* LOGO */}
             <div className="flex items-center gap-3">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-950 text-2xl font-black text-white">
                 TI
               </div>
+
               <div>
                 <p className="text-2xl font-black leading-none">
                   Tadeo
                   <br />
                   Invoices
                 </p>
+
                 <p className="text-sm font-semibold text-slate-500">
                   Billing SaaS
                 </p>
               </div>
             </div>
 
+            {/* NAVIGATION */}
             <nav className="flex flex-wrap items-center justify-center gap-2 text-sm font-black text-slate-950">
               <Link
                 href="/"
@@ -59,18 +52,21 @@ export default async function HomePage() {
               >
                 Home
               </Link>
+
               <Link
                 href="/login"
                 className="rounded-2xl px-5 py-3 hover:bg-blue-50"
               >
                 Login
               </Link>
+
               <Link
                 href="/signup"
                 className="rounded-2xl px-5 py-3 hover:bg-blue-50"
               >
                 Sign up
               </Link>
+
               <Link
                 href="/pricing"
                 className="rounded-2xl px-5 py-3 hover:bg-blue-50"
@@ -79,6 +75,7 @@ export default async function HomePage() {
               </Link>
             </nav>
 
+            {/* CTA */}
             <Link
               href="/login"
               className="rounded-2xl bg-blue-700 px-6 py-4 text-center text-lg font-black text-white shadow-xl shadow-blue-700/25 hover:bg-blue-600"
@@ -88,15 +85,17 @@ export default async function HomePage() {
           </div>
         </div>
 
+        {/* HERO */}
         <div className="mx-auto mt-24 max-w-5xl text-center">
           <h1 className="text-5xl font-black leading-tight tracking-tight md:text-7xl">
             Invoicing simple,
             <br />
             <span className="text-blue-700">payments</span> faster
           </h1>
+
           <p className="mx-auto mt-6 max-w-2xl text-xl font-medium leading-8 text-slate-600">
             Create professional invoices, accept online payments and manage your
-            business from one secure account.
+            business from one place.
           </p>
 
           <div className="mt-10 flex flex-wrap justify-center gap-5">
@@ -116,6 +115,7 @@ export default async function HomePage() {
           </div>
         </div>
 
+        {/* FEATURE CARDS */}
         <div className="mt-20 grid gap-7 lg:grid-cols-3">
           {features.map((feature) => (
             <div
@@ -123,6 +123,7 @@ export default async function HomePage() {
               className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-blue-500 to-blue-800 p-8 text-white shadow-2xl shadow-blue-800/20"
             >
               <div className="absolute right-6 top-6 h-20 w-20 rounded-full bg-white/10 blur-2xl" />
+
               <div className="absolute bottom-0 left-0 h-40 w-40 rounded-full bg-cyan-300/10 blur-3xl" />
 
               <div className="relative">
@@ -146,6 +147,7 @@ export default async function HomePage() {
           ))}
         </div>
 
+        {/* CTA SECTION */}
         <section className="mt-16 overflow-hidden rounded-[2rem] bg-gradient-to-br from-blue-700 to-slate-950 px-6 py-16 text-center text-white shadow-2xl shadow-blue-900/20">
           <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-white/15 text-4xl">
             🔐
