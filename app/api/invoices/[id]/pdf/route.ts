@@ -1,31 +1,23 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import QRCode from "qrcode";
-import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
-function money(value: number, currency = "USD") {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-  }).format(Number(value || 0));
-}
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    const { data: invoice, error } = await supabase
+    const { data: invoice, error } = await supabaseAdmin
       .from("invoices")
       .select("*")
       .eq("id", id)
@@ -33,285 +25,336 @@ export async function GET(
 
     if (error || !invoice) {
       return NextResponse.json(
-        { error: "Invoice not found." },
+        { error: "Invoice not found" },
         { status: 404 }
       );
     }
 
-    const { data: items } = await supabase
+    const { data: items } = await supabaseAdmin
       .from("invoice_items")
       .select("*")
-      .eq("invoice_id", id);
-
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
-
-    const payUrl = `${siteUrl}/api/invoices/${invoice.id}/pay`;
-
-    const qrPngDataUrl = await QRCode.toDataURL(payUrl, {
-      width: 300,
-      margin: 1,
-    });
-
-    const qrPngBytes = Buffer.from(
-      qrPngDataUrl.replace(/^data:image\/png;base64,/, ""),
-      "base64"
-    );
+      .eq("invoice_id", invoice.id);
 
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([612, 792]);
 
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-    const qrImage = await pdfDoc.embedPng(qrPngBytes);
 
-    const { width, height } = page.getSize();
+    const navy = rgb(0.02, 0.05, 0.15);
+    const blue = rgb(0.15, 0.39, 0.92);
+    const muted = rgb(0.4, 0.46, 0.56);
+    const line = rgb(0.88, 0.9, 0.95);
+    const light = rgb(0.98, 0.99, 1);
+
+    function money(value: number, currency = "USD") {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency,
+      }).format(Number(value || 0));
+    }
 
     page.drawRectangle({
       x: 0,
-      y: height - 120,
-      width,
-      height: 120,
-      color: rgb(0.02, 0.04, 0.12),
+      y: 0,
+      width: 612,
+      height: 792,
+      color: light,
     });
 
-    page.drawText("Tadeo Invoices", {
-      x: 50,
-      y: height - 55,
-      size: 22,
+    page.drawRectangle({
+      x: 0,
+      y: 720,
+      width: 612,
+      height: 72,
+      color: navy,
+    });
+
+    page.drawText("TADEO INVOICES", {
+      x: 44,
+      y: 748,
+      size: 24,
       font: bold,
       color: rgb(1, 1, 1),
     });
 
-    page.drawText("Professional Billing & Payments", {
-      x: 50,
-      y: height - 78,
-      size: 10,
-      font,
-      color: rgb(0.65, 0.75, 0.9),
-    });
-
-    page.drawText(`Invoice #${invoice.invoice_number || invoice.id.slice(0, 8)}`, {
-      x: 50,
-      y: height - 165,
-      size: 28,
+    page.drawText(`Invoice #${invoice.invoice_number || invoice.id}`, {
+      x: 44,
+      y: 708,
+      size: 16,
       font: bold,
-      color: rgb(0.02, 0.04, 0.12),
+      color: navy,
     });
 
-    page.drawText(`Client: ${invoice.client_name || "Unknown Client"}`, {
-      x: 50,
-      y: height - 200,
-      size: 12,
-      font,
-      color: rgb(0.2, 0.25, 0.35),
-    });
-
-    page.drawText(`Email: ${invoice.client_email || "No email"}`, {
-      x: 50,
-      y: height - 220,
-      size: 12,
-      font,
-      color: rgb(0.2, 0.25, 0.35),
-    });
-
-    page.drawText(`Issue Date: ${invoice.issue_date || "—"}`, {
-      x: 50,
-      y: height - 250,
+    page.drawText(`Client: ${invoice.client_name || "-"}`, {
+      x: 44,
+      y: 680,
       size: 11,
       font,
-      color: rgb(0.3, 0.35, 0.45),
+      color: muted,
     });
 
-    page.drawText(`Due Date: ${invoice.due_date || "—"}`, {
-      x: 50,
-      y: height - 268,
+    page.drawText(`Email: ${invoice.client_email || "-"}`, {
+      x: 44,
+      y: 662,
       size: 11,
       font,
-      color: rgb(0.3, 0.35, 0.45),
+      color: muted,
     });
 
-    page.drawText("Scan to Pay", {
-      x: 455,
-      y: height - 165,
-      size: 14,
+    page.drawText(`Status: ${invoice.status || "pending"}`, {
+      x: 44,
+      y: 644,
+      size: 11,
       font: bold,
-      color: rgb(0.02, 0.04, 0.12),
+      color:
+        invoice.status === "paid"
+          ? rgb(0.05, 0.55, 0.28)
+          : blue,
     });
 
-    page.drawImage(qrImage, {
-      x: 445,
-      y: height - 305,
-      width: 115,
-      height: 115,
-    });
+    let y = 590;
 
-    page.drawText("Secure Stripe payment", {
-      x: 445,
-      y: height - 320,
-      size: 8,
-      font,
-      color: rgb(0.35, 0.4, 0.5),
+    page.drawRectangle({
+      x: 44,
+      y,
+      width: 524,
+      height: 32,
+      color: navy,
     });
 
     page.drawText("Description", {
-      x: 50,
-      y: height - 350,
-      size: 11,
+      x: 60,
+      y: y + 10,
+      size: 10,
       font: bold,
-      color: rgb(0.1, 0.15, 0.25),
+      color: rgb(1, 1, 1),
     });
 
     page.drawText("Qty", {
-      x: 340,
-      y: height - 350,
-      size: 11,
+      x: 320,
+      y: y + 10,
+      size: 10,
       font: bold,
-      color: rgb(0.1, 0.15, 0.25),
+      color: rgb(1, 1, 1),
     });
 
     page.drawText("Price", {
-      x: 400,
-      y: height - 350,
-      size: 11,
+      x: 390,
+      y: y + 10,
+      size: 10,
       font: bold,
-      color: rgb(0.1, 0.15, 0.25),
+      color: rgb(1, 1, 1),
     });
 
     page.drawText("Total", {
       x: 490,
-      y: height - 350,
-      size: 11,
+      y: y + 10,
+      size: 10,
       font: bold,
-      color: rgb(0.1, 0.15, 0.25),
+      color: rgb(1, 1, 1),
     });
 
-    page.drawLine({
-      start: { x: 50, y: height - 365 },
-      end: { x: 560, y: height - 365 },
-      thickness: 1,
-      color: rgb(0.85, 0.88, 0.92),
-    });
-
-    let y = height - 390;
+    y -= 36;
 
     for (const item of items || []) {
-      const qty = Number(item.quantity ?? item.qty ?? 0);
+      const qty = Number(item.quantity ?? item.qty ?? 1);
       const price = Number(item.unit_price ?? item.price ?? 0);
-      const lineTotal = Number(item.line_total ?? qty * price);
+      const total = Number(
+        item.line_total ?? item.total ?? qty * price
+      );
 
-      page.drawText(String(item.description || "Service").slice(0, 42), {
-        x: 50,
-        y,
-        size: 10,
-        font,
-        color: rgb(0.15, 0.2, 0.3),
+      page.drawRectangle({
+        x: 44,
+        y: y - 8,
+        width: 524,
+        height: 30,
+        color: rgb(1, 1, 1),
+        borderColor: line,
+        borderWidth: 0.5,
       });
+
+      page.drawText(
+        String(item.description || "-").slice(0, 42),
+        {
+          x: 60,
+          y: y + 2,
+          size: 10,
+          font,
+          color: navy,
+        }
+      );
 
       page.drawText(String(qty), {
-        x: 345,
-        y,
+        x: 324,
+        y: y + 2,
         size: 10,
         font,
-        color: rgb(0.15, 0.2, 0.3),
+        color: muted,
       });
 
-      page.drawText(money(price, invoice.currency || "USD"), {
-        x: 400,
-        y,
+      page.drawText(money(price), {
+        x: 388,
+        y: y + 2,
         size: 10,
         font,
-        color: rgb(0.15, 0.2, 0.3),
+        color: muted,
       });
 
-      page.drawText(money(lineTotal, invoice.currency || "USD"), {
-        x: 490,
-        y,
+      page.drawText(money(total), {
+        x: 484,
+        y: y + 2,
         size: 10,
         font: bold,
-        color: rgb(0.15, 0.2, 0.3),
+        color: navy,
       });
 
-      y -= 24;
+      y -= 30;
     }
 
-    page.drawLine({
-      start: { x: 360, y: 180 },
-      end: { x: 560, y: 180 },
-      thickness: 1,
-      color: rgb(0.85, 0.88, 0.92),
+    const subtotal = Number(invoice.subtotal || invoice.total || 0);
+    const tax = Number(invoice.tax_total || 0);
+    const grandTotal = Number(invoice.total || subtotal + tax);
+
+    page.drawRectangle({
+      x: 340,
+      y: 140,
+      width: 228,
+      height: 90,
+      color: rgb(0.93, 0.96, 1),
+      borderColor: line,
+      borderWidth: 1,
     });
 
     page.drawText("Subtotal", {
-      x: 380,
-      y: 150,
-      size: 11,
+      x: 360,
+      y: 204,
+      size: 10,
       font,
-      color: rgb(0.25, 0.3, 0.4),
+      color: muted,
     });
 
-    page.drawText(money(Number(invoice.subtotal || 0), invoice.currency || "USD"), {
-      x: 480,
-      y: 150,
-      size: 11,
+    page.drawText(money(subtotal), {
+      x: 470,
+      y: 204,
+      size: 10,
       font: bold,
-      color: rgb(0.1, 0.15, 0.25),
+      color: navy,
     });
 
     page.drawText("Tax", {
-      x: 380,
-      y: 125,
-      size: 11,
+      x: 360,
+      y: 178,
+      size: 10,
       font,
-      color: rgb(0.25, 0.3, 0.4),
+      color: muted,
     });
 
-    page.drawText(money(Number(invoice.tax_total || 0), invoice.currency || "USD"), {
-      x: 480,
-      y: 125,
-      size: 11,
+    page.drawText(money(tax), {
+      x: 470,
+      y: 178,
+      size: 10,
       font: bold,
-      color: rgb(0.1, 0.15, 0.25),
+      color: navy,
     });
 
-    page.drawText("Total", {
-      x: 380,
-      y: 90,
-      size: 16,
+    page.drawLine({
+      start: { x: 360, y: 160 },
+      end: { x: 548, y: 160 },
+      thickness: 1,
+      color: line,
+    });
+
+    page.drawText("TOTAL", {
+      x: 360,
+      y: 136,
+      size: 14,
       font: bold,
-      color: rgb(0.02, 0.04, 0.12),
+      color: navy,
     });
 
-    page.drawText(money(Number(invoice.total || 0), invoice.currency || "USD"), {
-      x: 455,
-      y: 90,
+    page.drawText(money(grandTotal), {
+      x: 448,
+      y: 134,
       size: 18,
       font: bold,
-      color: rgb(0.02, 0.55, 0.65),
+      color: blue,
     });
 
-    page.drawText(`Payment link: ${payUrl}`, {
-      x: 50,
-      y: 50,
+    page.drawText("Thank you for your business.", {
+      x: 44,
+      y: 52,
+      size: 10,
+      font: bold,
+      color: navy,
+    });
+
+    page.drawText("Generated by Tadeo Invoices", {
+      x: 44,
+      y: 36,
       size: 8,
       font,
-      color: rgb(0.35, 0.4, 0.5),
+      color: muted,
+    });
+
+    // =========================
+    // STRIPE PAYMENT QR
+    // =========================
+
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      new URL(req.url).origin;
+
+    const payUrl = `${siteUrl}/api/invoices/${invoice.id}/pay`;
+
+    const qrDataUrl = await QRCode.toDataURL(payUrl, {
+      width: 180,
+      margin: 1,
+    });
+
+    const qrBytes = Buffer.from(
+      qrDataUrl.replace(/^data:image\/png;base64,/, ""),
+      "base64"
+    );
+
+    const qrImage = await pdfDoc.embedPng(qrBytes);
+
+    page.drawText("Scan to pay securely", {
+      x: 392,
+      y: 62,
+      size: 9,
+      font: bold,
+      color: navy,
+    });
+
+    page.drawImage(qrImage, {
+      x: 420,
+      y: 10,
+      width: 90,
+      height: 90,
+    });
+
+    page.drawText("Stripe secure payment", {
+      x: 410,
+      y: 2,
+      size: 7,
+      font,
+      color: muted,
     });
 
     const pdfBytes = await pdfDoc.save();
 
     return new NextResponse(Buffer.from(pdfBytes), {
-      status: 200,
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `inline; filename="invoice-${invoice.invoice_number || invoice.id}.pdf"`,
       },
     });
-  } catch (err: any) {
-    console.error("PDF_ERROR:", err);
+  } catch (error) {
+    console.error("PDF_ERROR", error);
 
     return NextResponse.json(
-      { error: err?.message || "Error generating PDF." },
+      { error: "Could not generate PDF" },
       { status: 500 }
     );
   }
