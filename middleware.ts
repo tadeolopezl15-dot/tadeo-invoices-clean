@@ -3,7 +3,10 @@ import { createServerClient } from "@supabase/ssr";
 
 const PUBLIC_ROUTES = ["/", "/login", "/signup", "/pricing"];
 
-const PUBLIC_PREFIXES = ["/public-invoice", "/api/stripe/webhook"];
+const PUBLIC_PREFIXES = [
+  "/public-invoice",
+  "/api/stripe/webhook",
+];
 
 function isPublicRoute(pathname: string) {
   if (PUBLIC_ROUTES.includes(pathname)) return true;
