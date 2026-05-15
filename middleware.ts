@@ -1,18 +1,32 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const PUBLIC_ROUTES = ["/", "/login", "/signup", "/pricing"];
+const PUBLIC_ROUTES = [
+  "/",
+  "/login",
+  "/signup",
+  "/pricing",
+];
 
-const PUBLIC_PREFIXES = ["/public-invoice", "/api/stripe/webhook"];
+const PUBLIC_PREFIXES = [
+  "/public-invoice",
+  "/api/stripe/webhook",
+];
 
 function isPublicRoute(pathname: string) {
-  if (PUBLIC_ROUTES.includes(pathname)) return true;
-  return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  if (PUBLIC_ROUTES.includes(pathname)) {
+    return true;
+  }
+
+  return PUBLIC_PREFIXES.some((prefix) =>
+    pathname.startsWith(prefix)
+  );
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Ignore static files
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
@@ -23,6 +37,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Allow public pages
   if (isPublicRoute(pathname)) {
     return NextResponse.next();
   }
@@ -37,6 +52,7 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
+
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, options);
@@ -50,10 +66,17 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // If user is not logged in
   if (!user) {
     const loginUrl = request.nextUrl.clone();
+
     loginUrl.pathname = "/login";
-    loginUrl.searchParams.set("redirectedFrom", pathname);
+
+    loginUrl.searchParams.set(
+      "redirectedFrom",
+      pathname
+    );
+
     return NextResponse.redirect(loginUrl);
   }
 
@@ -61,5 +84,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico).*)",
+  ],
 };
